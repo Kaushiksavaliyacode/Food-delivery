@@ -4,7 +4,7 @@ import {
   LayoutDashboard, UtensilsCrossed, Package, TrendingUp, Settings, 
   ChevronRight, Power, Clock, Plus, Trash2, Edit3, Eye 
 } from 'lucide-react';
-import { MOCK_RESTAURANTS } from '../constants';
+import { MOCK_RESTAURANTS } from '../constants.tsx';
 
 const RestaurantApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState('orders');
@@ -12,11 +12,10 @@ const RestaurantApp: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
-      {/* Header */}
       <div className="p-8 bg-white border-b sticky top-0 z-20">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-black text-slate-900">Orix Kitchen</h1>
+            <h1 className="text-2xl font-black text-slate-900">Dreamland Hotel</h1>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Restaurant Management</p>
           </div>
           <button 
@@ -32,15 +31,15 @@ const RestaurantApp: React.FC = () => {
            <div className="bg-slate-50 rounded-3xl p-5 border border-slate-100 flex items-center gap-4">
               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-orange-500 shadow-sm"><TrendingUp className="w-5 h-5" /></div>
               <div>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase">Revenue</p>
-                 <p className="text-lg font-black text-slate-900">$1.2k</p>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase">Revenue Today</p>
+                 <p className="text-lg font-black text-slate-900">₹4.2k</p>
               </div>
            </div>
            <div className="bg-slate-50 rounded-3xl p-5 border border-slate-100 flex items-center gap-4">
               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-500 shadow-sm"><Package className="w-5 h-5" /></div>
               <div>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase">Orders</p>
-                 <p className="text-lg font-black text-slate-900">42</p>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase">Live Orders</p>
+                 <p className="text-lg font-black text-slate-900">08</p>
               </div>
            </div>
         </div>
@@ -61,8 +60,8 @@ const RestaurantApp: React.FC = () => {
                         <div className="flex items-center gap-3">
                            <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-black text-lg">#{i}</div>
                            <div>
-                              <h4 className="font-black text-slate-900">Client {i}</h4>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase">Scheduled Delivery • 12:45</p>
+                              <h4 className="font-black text-slate-900">Table {i} / Delivery</h4>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">Incoming Request • 20:45</p>
                            </div>
                         </div>
                         <div className="bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-orange-200">
@@ -72,8 +71,8 @@ const RestaurantApp: React.FC = () => {
                      <div className="bg-slate-50 p-4 rounded-2xl mb-6">
                         <p className="text-xs text-slate-600 font-bold mb-2 uppercase tracking-widest opacity-50">Items</p>
                         <ul className="space-y-1">
-                           <li className="text-sm font-bold text-slate-800">1x Egg Pasta (Extra Spicy)</li>
-                           <li className="text-sm font-bold text-slate-800">2x Dimsum Steamed</li>
+                           <li className="text-sm font-bold text-slate-800">1x Paneer Butter Masala</li>
+                           <li className="text-sm font-bold text-slate-800">2x Butter Naan</li>
                         </ul>
                      </div>
                      <div className="flex gap-4">
@@ -100,14 +99,14 @@ const RestaurantApp: React.FC = () => {
                      </div>
                      <div className="flex-1">
                         <h4 className="font-black text-sm text-slate-900">{item.name}</h4>
-                        <p className="text-[10px] font-bold text-slate-400">${item.price}</p>
+                        <p className="text-[10px] font-bold text-slate-400">₹{item.price}</p>
                      </div>
                      <div className="flex gap-2">
                         <button className="p-2 bg-slate-50 rounded-xl text-slate-400 hover:text-orange-600"><Edit3 className="w-4 h-4" /></button>
                         <button className="p-2 bg-slate-50 rounded-xl text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                         <div className="flex items-center gap-2 ml-2">
-                           <div className="w-10 h-6 bg-slate-200 rounded-full relative p-1 cursor-pointer">
-                              <div className="w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                           <div className="w-10 h-6 bg-orange-500 rounded-full relative p-1 cursor-pointer">
+                              <div className="w-4 h-4 bg-white rounded-full shadow-sm ml-auto"></div>
                            </div>
                         </div>
                      </div>
@@ -118,7 +117,6 @@ const RestaurantApp: React.FC = () => {
         )}
       </div>
 
-      {/* Bottom Nav */}
       <div className="bg-white border-t px-10 py-4 flex justify-between items-center rounded-t-[40px] shadow-2xl">
         <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-orange-600' : 'text-slate-400'}`}>
           <LayoutDashboard className="w-6 h-6" />

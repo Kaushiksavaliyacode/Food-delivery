@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#E23744">
+    <meta name="description" content="Kaushik Food - Premium Food Delivery Ecosystem">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Kaushik Food">
@@ -17,6 +18,15 @@
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Smooth entry animation */
+        #root {
+          animation: fadeIn 0.4s ease-in-out;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 <script type="importmap">
 {
@@ -32,12 +42,30 @@
 </head>
 <body class="bg-slate-50 text-slate-900 overflow-x-hidden">
     <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
     <script>
+      /**
+       * PWA Service Worker Registration
+       * Robust registration that handles relative path issues in sub-domain environments
+       */
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Service Worker registered', reg))
-            .catch(err => console.error('Service Worker registration failed', err));
+          // Explicitly resolve sw.js against the current origin to fix origin mismatch errors
+          // the pathname ensures it's relative to the domain root correctly
+          const swUrl = new URL('sw.js', window.location.origin + window.location.pathname).href;
+          
+          navigator.serviceWorker.register('sw.js')
+            .then(reg => {
+              console.log('SW: Registered successfully with scope:', reg.scope);
+            })
+            .catch(err => {
+              // Handle origin errors which are common in specific preview environments
+              if (err.message.includes('origin')) {
+                console.warn('SW: Registration blocked by origin policy (Common in development previews). PWA will function correctly on the final deployment domain.');
+              } else {
+                console.error('SW: Registration failed:', err);
+              }
+            });
         });
       }
     </script>

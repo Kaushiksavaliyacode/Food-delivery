@@ -5,7 +5,7 @@ import CustomerApp from './screens/CustomerApp.tsx';
 import RestaurantApp from './screens/RestaurantApp.tsx';
 import DeliveryApp from './screens/DeliveryApp.tsx';
 import AdminPanel from './screens/AdminPanel.tsx';
-import { Lock, Mail, ShieldCheck, Smartphone, ChevronRight, ArrowLeft, LogIn } from 'lucide-react';
+import { Smartphone, ChevronRight, ArrowLeft, ShieldCheck, Lock, CheckCircle2, Loader2, Info } from 'lucide-react';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>({
@@ -17,42 +17,45 @@ const App: React.FC = () => {
     isLoggedIn: false
   });
 
-  // Login UI states
-  const [authStep, setAuthStep] = useState<'login' | 'role'>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [authStep, setAuthStep] = useState<'phone' | 'otp' | 'role'>('phone');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // SIMULATED FREE OTP HANDLER
+  const handlePhoneSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    if (!email.includes('@')) {
-      setError('Please enter a valid email address');
-      return;
-    }
-    if (password.length < 4) {
-      setError('Password must be at least 4 characters');
-      return;
-    }
-
+    if (phone.length < 10) return;
     setIsLoading(true);
-    // Simulate API call
+    
+    // Architect hook: This is where you'd call Firebase Auth
+    // const confirmation = await auth().signInWithPhoneNumber(phone);
+    
     setTimeout(() => {
       setIsLoading(false);
-      // Hardcoded "Admin" bypass or general "Success"
-      if (email === 'admin@foodgo.com' && password === 'admin') {
+      setAuthStep('otp');
+    }, 1500);
+  };
+
+  const handleOtpSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otp.length < 4) return;
+    setIsLoading(true);
+
+    // Sandbox Logic: Accept any code ending in "0" or "1234"
+    setTimeout(() => {
+      setIsLoading(false);
+      if (phone === '9999999999' && otp === '1234') {
         setAppState(prev => ({
           ...prev,
           role: UserRole.ADMIN,
           isLoggedIn: true,
-          userEmail: email
+          phoneNumber: phone
         }));
       } else {
         setAuthStep('role');
       }
-    }, 1200);
+    }, 1500);
   };
 
   const selectRoleAndLogin = (role: UserRole) => {
@@ -60,162 +63,148 @@ const App: React.FC = () => {
       ...prev,
       role: role,
       isLoggedIn: true,
-      userEmail: email
+      phoneNumber: phone
     }));
-  };
-
-  const handleLogout = () => {
-    setAppState({
-      role: UserRole.CUSTOMER,
-      currentLocation: null,
-      savedAddresses: [],
-      cart: [],
-      activeOrder: null,
-      isLoggedIn: false
-    });
-    setAuthStep('login');
-    setEmail('');
-    setPassword('');
-    setError('');
   };
 
   const renderApp = () => {
     switch (appState.role) {
-      case UserRole.CUSTOMER:
-        return <CustomerApp state={appState} setState={setAppState} />;
-      case UserRole.RESTAURANT:
-        return <RestaurantApp />;
-      case UserRole.DELIVERY:
-        return <DeliveryApp />;
-      case UserRole.ADMIN:
-        return <AdminPanel />;
-      default:
-        return <CustomerApp state={appState} setState={setAppState} />;
+      case UserRole.CUSTOMER: return <CustomerApp state={appState} setState={setAppState} />;
+      case UserRole.RESTAURANT: return <RestaurantApp />;
+      case UserRole.DELIVERY: return <DeliveryApp />;
+      case UserRole.ADMIN: return <AdminPanel />;
+      default: return <CustomerApp state={appState} setState={setAppState} />;
     }
   };
 
   if (!appState.isLoggedIn) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
-        <div className="w-full max-w-[420px] bg-white rounded-[48px] p-10 shadow-2xl overflow-hidden relative min-h-[600px] flex flex-col">
-          {/* Decorative background blobs */}
-          <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/5 -translate-y-16 translate-x-16 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-yellow-500/5 translate-y-12 -translate-x-12 rounded-full blur-2xl"></div>
-          
-          <div className="text-center mb-10 relative z-10">
-            <div className="w-20 h-20 bg-orange-500 rounded-[28px] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-orange-500/20 animate-in zoom-in duration-500">
-              <LogIn className="w-10 h-10 text-white" />
+      <div className="min-h-screen bg-[#F4F4F4] flex items-center justify-center p-4 font-['Plus_Jakarta_Sans']">
+        <div className="w-full max-w-[420px] bg-white rounded-[40px] p-8 shadow-2xl relative min-h-[650px] flex flex-col overflow-hidden">
+          {/* Brand Header */}
+          <div className="text-center mt-8 mb-12">
+            <div className="w-20 h-20 bg-[#E23744] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-red-500/20">
+              <Smartphone className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 mb-2">FoodGo</h1>
-            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em]">Dreamland Ecosystem</p>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">FoodGo</h1>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">Premium Delivery Ecosystem</p>
           </div>
 
-          <div className="flex-1 flex flex-col relative z-10">
-            {authStep === 'login' ? (
-              <form onSubmit={handleLogin} className="space-y-6 animate-in slide-in-from-right duration-500">
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
-                    <input 
-                      type="email" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-slate-50 border-2 border-transparent focus:border-orange-500/20 focus:bg-white rounded-2xl py-4 pl-14 pr-6 outline-none transition-all font-bold text-slate-900"
-                      placeholder="name@example.com"
-                      required
-                    />
-                  </div>
+          <div className="flex-1">
+            {authStep === 'phone' && (
+              <form onSubmit={handlePhoneSubmit} className="space-y-6 animate-in slide-in-from-bottom duration-500">
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-black text-slate-900">Sign in</h2>
+                  <p className="text-sm text-slate-400 font-medium">Enter your phone number to proceed</p>
                 </div>
-
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
-                    <input 
-                      type="password" 
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-slate-50 border-2 border-transparent focus:border-orange-500/20 focus:bg-white rounded-2xl py-4 pl-14 pr-6 outline-none transition-all font-bold text-slate-900"
-                      placeholder="••••••••"
-                      required
-                    />
+                <div className="relative">
+                  <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-2 border-r pr-3 border-slate-200">
+                    <span className="font-bold text-slate-900">+91</span>
                   </div>
+                  <input 
+                    type="tel" 
+                    maxLength={10}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    className="w-full bg-slate-50 border-2 border-transparent focus:border-red-500/20 focus:bg-white rounded-[24px] py-5 pl-20 pr-6 outline-none transition-all font-bold text-lg tracking-widest"
+                    placeholder="98765 43210"
+                    required
+                  />
                 </div>
-
-                {error && <p className="text-red-500 text-[10px] font-black uppercase text-center animate-bounce">{error}</p>}
+                
+                <div className="bg-blue-50 p-4 rounded-2xl flex gap-3">
+                   <Info className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                   <p className="text-[9px] font-bold text-blue-600 leading-relaxed uppercase">Sandbox Mode Enabled: <br/>Use any 10-digit number. real sms cost avoided.</p>
+                </div>
 
                 <button 
                   type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  disabled={phone.length < 10 || isLoading}
+                  className="w-full bg-[#E23744] text-white py-5 rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-red-500/20 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                 >
-                  {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <>Sign In <ChevronRight className="w-4 h-4" /></>
-                  )}
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Send OTP <ChevronRight className="w-4 h-4" /></>}
                 </button>
-
-                <div className="text-center pt-4">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
-                    Test Accounts:<br/>
-                    Any Email + 4-char Pass<br/>
-                    <span className="text-orange-500">admin@foodgo.com / admin</span>
-                  </p>
-                </div>
               </form>
-            ) : (
-              <div className="animate-in fade-in slide-in-from-bottom duration-500">
-                <button onClick={() => setAuthStep('login')} className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 hover:text-slate-900 transition-colors">
-                  <ArrowLeft className="w-4 h-4" /> Back to Login
+            )}
+
+            {authStep === 'otp' && (
+              <form onSubmit={handleOtpSubmit} className="space-y-6 animate-in slide-in-from-right duration-500">
+                <div className="space-y-2">
+                  <button onClick={() => setAuthStep('phone')} className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
+                    <ArrowLeft className="w-4 h-4" /> Change Number
+                  </button>
+                  <h2 className="text-2xl font-black text-slate-900">OTP Sent</h2>
+                  <p className="text-sm text-slate-400 font-medium">Verify code sent to +91 {phone}</p>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-300" />
+                  <input 
+                    type="text" 
+                    maxLength={4}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                    className="w-full bg-slate-50 border-2 border-transparent focus:border-red-500/20 focus:bg-white rounded-[24px] py-5 pl-16 pr-6 outline-none transition-all font-black text-2xl tracking-[1em]"
+                    placeholder="0000"
+                    required
+                  />
+                </div>
+                <p className="text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">Test Code: 1234</p>
+                <button 
+                  type="submit"
+                  disabled={otp.length < 4 || isLoading}
+                  className="w-full bg-slate-900 text-white py-5 rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
+                >
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Verify & Login <ShieldCheck className="w-4 h-4" /></>}
                 </button>
-                <h2 className="text-xl font-black text-slate-900 mb-2 text-center">Login Success!</h2>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-10 text-center">Welcome {email}</p>
-                
+              </form>
+            )}
+
+            {authStep === 'role' && (
+              <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
+                <div className="text-center mb-8">
+                  <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                  <h2 className="text-2xl font-black text-slate-900">Verification Done</h2>
+                  <p className="text-sm text-slate-400 font-medium">Choose your workspace</p>
+                </div>
                 <div className="space-y-4">
                   {[
-                    { role: UserRole.CUSTOMER, label: 'Hungry Customer', desc: 'Order delicious food', icon: '🍔' },
-                    { role: UserRole.RESTAURANT, label: 'Restaurant Partner', desc: 'Manage your kitchen', icon: '🏪' },
-                    { role: UserRole.DELIVERY, label: 'Delivery Partner', desc: 'Deliver & earn big', icon: '🛵' }
+                    { role: UserRole.CUSTOMER, label: 'Customer', icon: '🍔', desc: 'Order Food' },
+                    { role: UserRole.RESTAURANT, label: 'Restaurant', icon: '🏪', desc: 'Merchant Hub' },
+                    { role: UserRole.DELIVERY, label: 'Delivery', icon: '🛵', desc: 'Fleet Partner' }
                   ].map((r) => (
                     <button 
                       key={r.role}
                       onClick={() => selectRoleAndLogin(r.role)}
-                      className="w-full flex items-center gap-5 p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl hover:border-orange-500 hover:bg-white transition-all group"
+                      className="w-full flex items-center gap-5 p-5 bg-slate-50 border-2 border-transparent rounded-[24px] hover:border-red-500/30 hover:bg-white transition-all group shadow-sm"
                     >
-                      <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center text-2xl group-hover:bg-orange-50 transition-colors">{r.icon}</div>
-                      <div className="text-left">
+                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm group-hover:bg-red-50">{r.icon}</div>
+                      <div className="text-left flex-1">
                         <h4 className="font-black text-slate-900 text-sm">{r.label}</h4>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{r.desc}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{r.desc}</p>
                       </div>
-                      <ChevronRight className="w-5 h-5 ml-auto text-slate-200 group-hover:text-orange-500 transition-colors" />
+                      <ChevronRight className="w-5 h-5 text-slate-200 group-hover:text-red-500" />
                     </button>
                   ))}
                 </div>
               </div>
             )}
           </div>
-          
-          <div className="mt-auto pt-6 text-center opacity-40">
-             <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">FoodGo Authentication v3.0</p>
-          </div>
+          <div className="mt-8 text-center text-[9px] font-black text-slate-300 uppercase tracking-[0.4em]">Powered by FoodGo Platform</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col items-center sm:py-8 font-['Plus_Jakarta_Sans']">
-      <button 
-        onClick={handleLogout}
-        className="fixed top-6 right-6 z-[9999] bg-white/80 backdrop-blur-xl text-slate-900 px-6 py-2.5 rounded-2xl text-[10px] font-black tracking-widest shadow-2xl hover:bg-white active:scale-95 transition-all uppercase border border-slate-100"
-      >
-        Sign Out
-      </button>
-
-      <div className="w-full max-w-[480px] h-screen bg-white shadow-[0_0_80px_rgba(0,0,0,0.1)] relative flex flex-col overflow-hidden sm:rounded-[48px] sm:h-[calc(100vh-64px)]">
+    <div className="min-h-screen bg-[#F0F2F5] flex flex-col items-center sm:py-8 font-['Plus_Jakarta_Sans']">
+      <div className="w-full max-w-[480px] h-screen bg-white shadow-[0_0_80px_rgba(0,0,0,0.08)] relative flex flex-col overflow-hidden sm:rounded-[40px] sm:h-[calc(100vh-64px)]">
         {renderApp()}
+        <button 
+          onClick={() => setAppState(p => ({ ...p, isLoggedIn: false }))}
+          className="absolute top-6 right-6 z-[9999] bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-lg border border-slate-100 opacity-20 hover:opacity-100 transition-opacity"
+        >
+          <ArrowLeft className="w-5 h-5 text-slate-400" />
+        </button>
       </div>
     </div>
   );

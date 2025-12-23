@@ -75,5 +75,5 @@ export interface AppState {
   cart: CartItem[];
   activeOrder: Order | null;
   isLoggedIn: boolean;
-  userEmail?: string;
+  phoneNumber?: string;
 }

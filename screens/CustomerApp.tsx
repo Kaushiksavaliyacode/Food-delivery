@@ -6,7 +6,8 @@ import {
   Search, MapPin, ShoppingBag, Clock, Star, ArrowLeft, Plus, Minus, X, 
   CheckCircle, Navigation, Phone, MessageSquare, ChevronRight, Heart, 
   Tag, User, Filter, SlidersHorizontal, Bell, Flame, Map as MapIcon, 
-  CreditCard, Wallet, Home, Briefcase, MoreHorizontal, History, Settings 
+  CreditCard, Wallet, Home, Briefcase, MoreHorizontal, History, Settings,
+  Zap, ShieldCheck, CreditCard as CardIcon, Compass, Loader2
 } from 'lucide-react';
 
 interface Props {
@@ -14,17 +15,78 @@ interface Props {
   setState: React.Dispatch<React.SetStateAction<AppState>>;
 }
 
+type CustomerView = 'location' | 'home' | 'itemDetail' | 'cart' | 'checkout' | 'success' | 'tracking' | 'profile';
+
 const CustomerApp: React.FC<Props> = ({ state, setState }) => {
-  // Navigation defaults to 'location' if no location set, otherwise 'home'
-  const [view, setView] = useState<'location' | 'home' | 'itemDetail' | 'cart' | 'tracking' | 'profile'>(
-    state.currentLocation ? 'home' : 'location'
-  );
-  
+  const [view, setView] = useState<CustomerView>(state.currentLocation ? 'home' : 'location');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [locationSearch, setLocationSearch] = useState('');
+  const [locationResults, setLocationResults] = useState<any[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [riderPos, setRiderPos] = useState({ lat: 0.4, lng: 0.3 });
+
+  useEffect(() => {
+    if (view === 'tracking') {
+      const interval = setInterval(() => {
+        setRiderPos(prev => ({
+          lat: prev.lat + (0.6 - prev.lat) * 0.05,
+          lng: prev.lng + (0.7 - prev.lng) * 0.05
+        }));
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [view]);
+
+  // FREE LOCATION DETECTION (Browser API + OpenStreetMap)
+  const detectLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const { latitude, longitude } = position.coords;
+      try {
+        // Using OpenStreetMap Nominatim (100% Free, No Key Required)
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
+        const data = await response.json();
+        const address = data.display_name || "Detected Location";
+        
+        setIsDetectingLocation(false);
+        confirmLocation({ lat: latitude, lng: longitude, address: address, type: 'Home' });
+      } catch (error) {
+        console.error("Geocoding failed", error);
+        setIsDetectingLocation(false);
+        // Fallback to manual if API fails
+        confirmLocation({ lat: latitude, lng: longitude, address: "Detected Location", type: 'Home' });
+      }
+    }, (error) => {
+      setIsDetectingLocation(false);
+      alert("Could not get your location. Please search manually.");
+    });
+  };
+
+  // FREE ADDRESS SEARCH (OpenStreetMap)
+  const searchAddresses = async (query: string) => {
+    setLocationSearch(query);
+    if (query.length < 3) {
+      setLocationResults([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
+      const data = await response.json();
+      setLocationResults(data);
+    } catch (error) {
+      console.error("Address search failed", error);
+    }
+  };
 
   const confirmLocation = (loc: Location) => {
     setState(prev => ({ ...prev, currentLocation: loc }));
@@ -52,407 +114,341 @@ const CustomerApp: React.FC<Props> = ({ state, setState }) => {
   };
 
   const cartTotal = state.cart.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
+  const finalTotal = cartTotal + 25 + 15;
 
   const placeOrder = () => {
     setIsLoading(true);
     setTimeout(() => {
-      setView('tracking');
-      setState(prev => ({ ...prev, cart: [] }));
       setIsLoading(false);
-    }, 1500);
+      setView('success');
+    }, 2000);
   };
 
-  if (view === 'location') {
-    return (
-      <div className="flex flex-col h-full bg-white animate-in slide-in-from-bottom duration-500">
-        <div className="flex-1 bg-slate-200 relative">
-           <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v10/static/-118.2437,34.0522,13,0/600x600?access_token=pk.eyJ1IjoibW9ja3VzZXIiLCJhIjoiY2p4eCJ9')] bg-cover bg-center"></div>
-           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="relative">
-                <MapPin className="w-12 h-12 text-orange-600 drop-shadow-2xl animate-bounce" />
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-2 bg-black/20 blur-sm rounded-full"></div>
-              </div>
-           </div>
-        </div>
-        <div className="bg-white p-8 rounded-t-[48px] -mt-12 relative z-10 shadow-2xl">
-          <h2 className="text-2xl font-black text-slate-900 mb-6">Select Location</h2>
-          <div className="space-y-4 mb-8">
-            <div className="flex items-center gap-4 p-5 bg-slate-50 rounded-3xl border border-slate-100 hover:border-orange-200 transition-all cursor-pointer" onClick={() => confirmLocation({ lat: 34.0522, lng: -118.2437, address: "Station Road, Dreamland", type: 'Home' })}>
-              <div className="bg-orange-100 p-3 rounded-2xl"><Home className="w-5 h-5 text-orange-600" /></div>
-              <div className="flex-1">
-                <h4 className="font-black text-sm">Home</h4>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Station Road, Dreamland</p>
-              </div>
-              <div className="w-6 h-6 rounded-full border-4 border-orange-500 bg-white"></div>
+  const LocationPicker = () => (
+    <div className="flex flex-col h-full bg-white animate-in slide-in-from-bottom duration-500">
+      <div className="flex-1 bg-slate-100 relative overflow-hidden">
+         <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/-118.2437,34.0522,13,0/600x600?access_token=pk.eyJ1IjoibW9ja3VzZXIiLCJhIjoiY2p4eCJ9')] bg-cover bg-center opacity-40"></div>
+         <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative">
+              <div className="absolute -inset-10 bg-[#E23744]/10 rounded-full animate-ping"></div>
+              <MapPin className="w-16 h-16 text-[#E23744] drop-shadow-2xl relative z-10" />
             </div>
-          </div>
+         </div>
+      </div>
+      <div className="bg-white p-10 rounded-t-[48px] -mt-12 relative z-10 shadow-2xl overflow-y-auto max-h-[70%] hide-scrollbar">
+        <h2 className="text-2xl font-black text-slate-900 mb-6 tracking-tight">Set Delivery Location</h2>
+        
+        <div className="space-y-4 mb-8">
           <button 
-            onClick={() => confirmLocation({ lat: 34.0522, lng: -118.2437, address: "Station Road, Dreamland", type: 'Home' })}
-            className="w-full bg-[#FFC107] text-slate-900 py-5 rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl shadow-yellow-100 active:scale-95 transition-all"
+            onClick={detectLocation}
+            disabled={isDetectingLocation}
+            className="w-full flex items-center gap-4 p-6 bg-red-50 rounded-[32px] border-2 border-red-100 hover:border-red-500 transition-all text-left shadow-sm"
           >
-            Confirm Location
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (view === 'profile') {
-    return (
-      <div className="flex flex-col h-full bg-white animate-in slide-in-from-right duration-500 p-8">
-         <button onClick={() => setView('home')} className="p-3 bg-slate-50 rounded-2xl w-fit mb-10"><ArrowLeft className="w-5 h-5" /></button>
-         <div className="flex flex-col items-center mb-12">
-            <div className="w-32 h-32 rounded-[48px] overflow-hidden border-4 border-slate-50 shadow-2xl mb-6">
-               <img src="https://picsum.photos/seed/user1/200/200" className="w-full h-full object-cover" />
-            </div>
-            <h2 className="text-2xl font-black text-slate-900">Premium Member</h2>
-            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">{state.userEmail}</p>
-         </div>
-
-         <div className="space-y-4">
-            {[
-               { icon: <History className="w-5 h-5 text-blue-500" />, label: 'My Orders' },
-               { icon: <CreditCard className="w-5 h-5 text-purple-500" />, label: 'Payment Methods' },
-               { icon: <MapPin className="w-5 h-5 text-orange-500" />, label: 'My Addresses' },
-               { icon: <Bell className="w-5 h-5 text-red-500" />, label: 'Notifications' },
-               { icon: <Settings className="w-5 h-5 text-slate-400" />, label: 'Settings' }
-            ].map((item, i) => (
-               <div key={i} className="flex items-center gap-5 p-5 bg-slate-50 rounded-[28px] border border-slate-100 hover:bg-white hover:border-orange-100 transition-all cursor-pointer group">
-                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                     {item.icon}
-                  </div>
-                  <span className="flex-1 font-black text-sm text-slate-900">{item.label}</span>
-                  <ChevronRight className="w-4 h-4 text-slate-300" />
-               </div>
-            ))}
-         </div>
-      </div>
-    );
-  }
-
-  if (view === 'itemDetail' && selectedItem) {
-    return (
-      <div className="flex flex-col h-full bg-white animate-in slide-in-from-right duration-500">
-        <div className="relative h-2/5 overflow-hidden">
-           <img src={selectedItem.image} className="w-full h-full object-cover" />
-           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-           <div className="absolute top-8 left-8 right-8 flex justify-between items-center">
-              <button onClick={() => setView('home')} className="p-3 bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl text-white"><ArrowLeft className="w-5 h-5" /></button>
-              <button className="p-3 bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl text-white"><Heart className="w-5 h-5" /></button>
-           </div>
-           <div className="absolute bottom-8 left-8">
-              <h1 className="text-3xl font-black text-white mb-2">{selectedItem.name}</h1>
-              <div className="flex gap-4">
-                 <div className="bg-orange-500/80 backdrop-blur-md px-4 py-1.5 rounded-full text-white text-[10px] font-black uppercase tracking-widest">Chef Special</div>
-                 <div className="bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1"><Flame className="w-3 h-3" /> {selectedItem.calories || 220} Cal</div>
-              </div>
-           </div>
-        </div>
-
-        <div className="flex-1 px-8 py-8 bg-white rounded-t-[48px] -mt-12 relative z-10 overflow-y-auto hide-scrollbar">
-           <div className="flex justify-between items-center mb-8">
+            {isDetectingLocation ? (
               <div className="flex items-center gap-4">
-                 <div className="bg-[#FFC107] px-4 py-2 rounded-2xl flex items-center gap-3 text-slate-900 font-black">
-                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-1 hover:bg-black/5 rounded-lg"><Minus className="w-4 h-4" /></button>
-                    <span className="text-xl">{quantity}</span>
-                    <button onClick={() => setQuantity(quantity + 1)} className="p-1 hover:bg-black/5 rounded-lg"><Plus className="w-4 h-4" /></button>
-                 </div>
+                <Loader2 className="w-6 h-6 text-[#E23744] animate-spin" />
+                <span className="font-black text-sm text-[#E23744] uppercase tracking-widest">Detecting Location...</span>
               </div>
-              <span className="text-3xl font-black text-slate-900">₹{(selectedItem.price * quantity).toFixed(2)}</span>
-           </div>
+            ) : (
+              <>
+                <div className="bg-white p-3 rounded-2xl shadow-sm"><Compass className="w-6 h-6 text-[#E23744]" /></div>
+                <div>
+                  <h4 className="font-black text-slate-900 text-sm">Use current location</h4>
+                  <p className="text-[10px] text-red-400 font-black uppercase tracking-widest">Free GPS Detection</p>
+                </div>
+              </>
+            )}
+          </button>
+          
+          <div className="relative">
+             <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
+             <input 
+              type="text" 
+              placeholder="Search for your area..." 
+              value={locationSearch}
+              onChange={(e) => searchAddresses(e.target.value)}
+              className="w-full bg-slate-50 rounded-[28px] py-6 pl-16 pr-6 outline-none font-bold text-sm border-2 border-transparent focus:border-slate-200 transition-all" 
+             />
+          </div>
 
-           <div className="mb-8">
-              <h3 className="text-sm font-black text-slate-900 mb-3 uppercase tracking-widest">Description</h3>
-              <p className="text-sm text-slate-500 leading-relaxed font-medium">{selectedItem.description}</p>
-           </div>
-
-           <div className="mb-12">
-              <h3 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-widest">Highlights</h3>
-              <div className="flex gap-4 overflow-x-auto hide-scrollbar">
-                 {['🥣 Authentic', '🥬 Fresh', '🔥 Spicy', '⭐ Premium'].map((ing, i) => (
-                   <div key={i} className="px-6 py-4 bg-slate-50 border border-slate-100 rounded-3xl whitespace-nowrap text-xs font-bold text-slate-600">{ing}</div>
-                 ))}
-              </div>
-           </div>
-
-           <button 
-             onClick={() => { addToCart(selectedItem, quantity); setView('home'); }}
-             className="w-full bg-slate-900 text-white py-6 rounded-[32px] font-black text-sm uppercase tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4 mb-8"
-           >
-             <ShoppingBag className="w-6 h-6 text-[#FFC107]" />
-             Add To Cart
-           </button>
+          {locationResults.length > 0 && (
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+               {locationResults.map((res, i) => (
+                 <button 
+                  key={i} 
+                  onClick={() => confirmLocation({ lat: parseFloat(res.lat), lng: parseFloat(res.lon), address: res.display_name, type: 'Other' })}
+                  className="w-full text-left p-4 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all flex items-start gap-3"
+                 >
+                    <MapPin className="w-4 h-4 text-slate-300 mt-1 flex-shrink-0" />
+                    <span className="text-xs font-bold text-slate-600 leading-relaxed">{res.display_name}</span>
+                 </button>
+               ))}
+            </div>
+          )}
         </div>
-      </div>
-    );
-  }
 
-  if (view === 'tracking') {
-    return (
-      <div className="flex flex-col h-full bg-white">
-         <div className="h-[55%] bg-slate-100 relative">
-            <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s-restaurant+FF4136(-118.24,34.05),pin-s-home+22C55E(-118.25,34.06)/-118.245,34.055,14,0/600x600?access_token=pk.eyJ1IjoibW9ja3VzZXIiLCJhIjoiY2p4eCJ9')] bg-cover bg-center"></div>
-            <div className="absolute top-8 left-8 right-8 flex justify-between">
-               <button onClick={() => setView('home')} className="p-3 bg-white rounded-2xl shadow-xl"><ArrowLeft className="w-5 h-5" /></button>
-               <div className="bg-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest">Live Tracking</span>
-               </div>
-            </div>
-            <div className="absolute top-1/2 left-1/2 w-8 h-8 -translate-x-1/2 -translate-y-1/2">
-               <div className="absolute inset-0 bg-orange-500 rounded-full animate-ping opacity-20"></div>
-               <div className="w-full h-full bg-white rounded-full shadow-2xl flex items-center justify-center p-1.5 border-2 border-orange-500">
-                  <Navigation className="w-full h-full text-orange-500 fill-orange-500" />
-               </div>
-            </div>
-         </div>
-         <div className="flex-1 bg-white p-8 rounded-t-[48px] -mt-12 relative z-10 shadow-2xl overflow-y-auto">
-            <div className="flex justify-between items-start mb-10">
-               <div>
-                  <h2 className="text-2xl font-black text-slate-900 mb-1">Arriving in 15 min</h2>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estimated arrival 21:15</p>
-               </div>
-               <div className="flex gap-3">
-                  <button className="p-4 bg-slate-50 rounded-2xl text-slate-900"><Phone className="w-5 h-5" /></button>
-                  <button className="p-4 bg-slate-50 rounded-2xl text-slate-900"><MessageSquare className="w-5 h-5" /></button>
-               </div>
-            </div>
-
-            <div className="space-y-8">
-               <div className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                     <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white p-1"><CheckCircle className="w-full h-full" /></div>
-                     <div className="w-0.5 h-12 bg-green-500"></div>
-                  </div>
-                  <div>
-                     <h4 className="text-sm font-black text-slate-900">Order Confirmed</h4>
-                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">20:46 • Success</p>
-                  </div>
-               </div>
-               <div className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                     <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white p-1 shadow-lg shadow-orange-500/20"><Clock className="w-full h-full" /></div>
-                     <div className="w-0.5 h-12 bg-slate-100"></div>
-                  </div>
-                  <div>
-                     <h4 className="text-sm font-black text-slate-900">Preparing Your Food</h4>
-                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">20:50 • In Progress</p>
-                  </div>
-               </div>
-               <div className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                     <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-300 p-1"></div>
-                  </div>
-                  <div className="opacity-40">
-                     <h4 className="text-sm font-black text-slate-900">On The Way</h4>
-                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Pending</p>
-                  </div>
-               </div>
-            </div>
-         </div>
+        {!locationResults.length && !isDetectingLocation && (
+          <p className="text-center text-[9px] font-black text-slate-300 uppercase tracking-[0.3em] mb-4">Or choose from saved addresses</p>
+        )}
       </div>
-    );
-  }
+    </div>
+  );
+
+  const SuccessScreen = () => (
+    <div className="flex flex-col h-full bg-[#E23744] items-center justify-center p-12 text-center animate-in zoom-in duration-500">
+       <div className="w-28 h-28 bg-white rounded-full flex items-center justify-center mb-8 shadow-2xl">
+          <CheckCircle className="w-16 h-16 text-green-500" />
+       </div>
+       <h1 className="text-4xl font-black text-white mb-4">Order Placed!</h1>
+       <p className="text-white/60 font-bold text-xs uppercase tracking-widest mb-12">Rider will be assigned shortly</p>
+       <button onClick={() => setView('tracking')} className="w-full bg-white text-slate-900 py-6 rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all">Track Order</button>
+    </div>
+  );
 
   const filteredItems = useMemo(() => {
     let items = MOCK_RESTAURANTS[0].menu;
-    if (activeCategory) {
-      items = items.filter(i => i.category === activeCategory);
-    }
-    if (searchQuery) {
-      items = items.filter(i => i.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    }
+    if (activeCategory) items = items.filter(i => i.category === activeCategory);
+    if (searchQuery) items = items.filter(i => i.name.toLowerCase().includes(searchQuery.toLowerCase()));
     return items;
   }, [activeCategory, searchQuery]);
 
+  if (view === 'location') return <LocationPicker />;
+  if (view === 'success') return <SuccessScreen />;
+
   return (
-    <div className="flex flex-col h-full bg-white overflow-hidden relative">
-      <div className="px-8 pt-10 pb-4 sticky top-0 bg-white z-30">
-        <div className="flex items-center justify-between mb-8">
-           <button onClick={() => setView('location')} className="flex flex-col items-start">
-              <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Delivering To</span>
-              <div className="flex items-center gap-1">
-                 <MapPin className="w-4 h-4 text-orange-600" />
-                 <span className="text-sm font-black text-slate-900">{state.currentLocation?.address || "Detecting..."}</span>
-                 <ChevronRight className="w-4 h-4 text-slate-300" />
+    <div className="flex flex-col h-full bg-white overflow-hidden relative font-['Plus_Jakarta_Sans']">
+      
+      {/* Search & Location Header */}
+      <div className="px-6 pt-10 pb-4 sticky top-0 bg-white z-40 border-b border-slate-50">
+        <div className="flex items-center justify-between mb-6">
+           <button onClick={() => setView('location')} className="flex items-center gap-2 max-w-[70%] text-left">
+              <MapPin className="w-5 h-5 text-[#E23744]" />
+              <div className="truncate">
+                 <h4 className="text-sm font-black text-slate-900">{state.currentLocation?.type || 'Home'}</h4>
+                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{state.currentLocation?.address || "Detecting..."}</p>
               </div>
+              <ChevronRight className="w-4 h-4 text-slate-300" />
            </button>
-           <div className="flex gap-3">
-              <button className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-900 relative">
-                 <Bell className="w-5 h-5" />
-                 <span className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full ring-4 ring-white"></span>
-              </button>
-              <button onClick={() => setView('profile')} className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-slate-50">
-                 <img src="https://picsum.photos/seed/user1/100/100" />
-              </button>
-           </div>
+           <button onClick={() => setView('profile')} className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 shadow-sm border-2 border-white">
+              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${state.phoneNumber}`} />
+           </button>
         </div>
 
-        <div className="relative mb-6">
-           <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300"><Search className="w-5 h-5" /></div>
+        <div className="relative">
+           <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
            <input 
              type="text" 
-             placeholder="Search in Dreamland Hotel..." 
-             className="w-full bg-slate-50 border-0 rounded-[24px] py-4 pl-14 pr-12 outline-none focus:ring-4 ring-yellow-400/10 transition-all font-bold text-sm"
+             placeholder="Search for biryani, pizza, cakes..." 
+             className="w-full bg-slate-50 rounded-[20px] py-4 pl-14 pr-12 outline-none focus:bg-white focus:ring-4 ring-red-500/5 transition-all font-bold text-sm border border-slate-100"
              value={searchQuery}
              onChange={(e) => setSearchQuery(e.target.value)}
            />
-           <button className="absolute right-4 top-1/2 -translate-y-1/2 bg-slate-900 text-white p-2 rounded-xl shadow-lg active:scale-90 transition"><Filter className="w-4 h-4" /></button>
-        </div>
-
-        <div className="flex gap-4 overflow-x-auto hide-scrollbar -mx-8 px-8">
-           {CATEGORIES.map(cat => (
-             <button 
-               key={cat.id} 
-               onClick={() => setActiveCategory(activeCategory === cat.name ? null : cat.name)}
-               className={`flex items-center gap-3 px-6 py-4 rounded-[24px] whitespace-nowrap transition-all border-2 ${activeCategory === cat.name ? 'bg-slate-900 border-slate-900 text-white shadow-2xl' : 'bg-slate-50 border-transparent text-slate-400'}`}
-             >
-               <span className="text-xl">{cat.icon}</span>
-               <span className="text-[10px] font-black uppercase tracking-widest">{cat.name}</span>
-             </button>
-           ))}
+           <button className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white rounded-xl shadow-sm border text-slate-400"><Filter className="w-4 h-4" /></button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-8 pb-32 pt-4 hide-scrollbar">
-         {!searchQuery && !activeCategory && (
-           <div className="mb-10 bg-gradient-to-br from-[#FFC107] to-orange-500 rounded-[40px] p-8 text-slate-900 relative overflow-hidden shadow-2xl shadow-yellow-200">
-              <div className="relative z-10 w-2/3">
-                 <h2 className="text-2xl font-black mb-2 leading-tight">Dreamland Special Offers!</h2>
-                 <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-6">Flat 20% OFF above ₹500</p>
-                 <button className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest">Order Now</button>
+      {/* Main Content Scroll */}
+      <div className="flex-1 overflow-y-auto hide-scrollbar pb-32">
+        {/* Horizontal Categories */}
+        {!searchQuery && (
+          <div className="px-6 py-8 overflow-x-auto hide-scrollbar flex gap-5">
+             {CATEGORIES.map(cat => (
+               <button 
+                 key={cat.id} 
+                 onClick={() => setActiveCategory(activeCategory === cat.name ? null : cat.name)}
+                 className="flex flex-col items-center gap-3 transition-transform active:scale-90"
+               >
+                 <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-sm transition-all ${activeCategory === cat.name ? 'bg-red-50 border-2 border-[#E23744]' : 'bg-slate-50 border-2 border-transparent'}`}>
+                    {cat.icon}
+                 </div>
+                 <span className={`text-[10px] font-black uppercase tracking-widest ${activeCategory === cat.name ? 'text-[#E23744]' : 'text-slate-400'}`}>{cat.name}</span>
+               </button>
+             ))}
+          </div>
+        )}
+
+        {/* Restaurant / Food Listing */}
+        <div className="px-6 space-y-10">
+           <div className="flex justify-between items-center">
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">{activeCategory || "Eat what excites you"}</h3>
+              <div className="flex items-center gap-3">
+                 <span className="text-[10px] font-black text-slate-300 uppercase">Sort</span>
+                 <SlidersHorizontal className="w-4 h-4 text-slate-300" />
               </div>
-              <img src="https://ouch-cdn2.icons8.com/Psh5n9NqK_FkH8A-oU0VpS3053K1XG9K3tG3t7p3k7k/rs:fit:456:456/czM6Ly9pY29uczgu/b3VjaC1wcm9kLmFz/c2V0cy9zdmcvMTYv/NDI0YjFjYmItYTAw/NC00YmU4LWI4ZjUt/N2EyYjg4YjY3Y2Fh/LnN2Zw.png" className="absolute top-0 right-[-20px] w-48 h-48 opacity-90 scale-125" />
            </div>
-         )}
 
-         <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-black text-slate-900">{searchQuery || activeCategory ? 'Results' : 'Chef Recommendations'}</h3>
-            <button className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Filters</button>
-         </div>
-
-         <div className="grid grid-cols-1 gap-8">
-            {filteredItems.map(item => (
-              <div key={item.id} onClick={() => { setSelectedItem(item); setView('itemDetail'); }} className="group cursor-pointer">
-                 <div className="relative mb-4">
-                    <div className="aspect-[4/3] rounded-[48px] overflow-hidden shadow-xl border-4 border-slate-50 transition-transform group-hover:scale-[1.02] duration-500">
-                       <img src={item.image} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="absolute top-6 left-6 flex flex-col gap-2">
-                       <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl flex items-center gap-2 shadow-lg">
-                          <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                          <span className="text-[10px] font-black">4.5</span>
-                       </div>
-                    </div>
-                    <button className="absolute bottom-6 right-6 w-14 h-14 bg-white rounded-3xl flex items-center justify-center text-slate-900 shadow-2xl transition-all group-hover:bg-[#FFC107] group-hover:rotate-12">
-                       <Plus className="w-6 h-6" />
-                    </button>
-                 </div>
-                 <div className="px-2">
-                    <div className="flex justify-between items-start mb-1">
-                       <h4 className="text-lg font-black text-slate-900">{item.name}</h4>
-                       <span className="text-xl font-black text-slate-900">₹{item.price}</span>
-                    </div>
-                    <p className="text-xs text-slate-400 font-medium leading-relaxed">{item.description}</p>
-                 </div>
-              </div>
-            ))}
-         </div>
+           <div className="grid grid-cols-1 gap-12 pb-10">
+              {filteredItems.map(item => (
+                <div key={item.id} onClick={() => { setSelectedItem(item); setView('itemDetail'); }} className="group">
+                   <div className="relative mb-4">
+                      <div className="aspect-[16/9] rounded-[32px] overflow-hidden shadow-2xl border-4 border-slate-50 transition-transform duration-500 group-hover:scale-[1.02]">
+                         <img src={item.image} className="w-full h-full object-cover" />
+                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60"></div>
+                      </div>
+                      <div className="absolute top-6 left-6 flex flex-col gap-2">
+                         <div className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl">
+                            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                            <span className="text-[10px] font-black">4.8</span>
+                         </div>
+                      </div>
+                      <div className="absolute bottom-6 left-6">
+                         <div className="bg-[#E23744] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2">
+                            <Clock className="w-3 h-3" /> 25 MINS
+                         </div>
+                      </div>
+                      <button className="absolute -bottom-4 right-8 w-14 h-14 bg-white rounded-3xl flex items-center justify-center text-slate-900 shadow-2xl border-2 border-slate-50 group-hover:bg-[#E23744] group-hover:text-white transition-all">
+                         <Plus className="w-6 h-6" />
+                      </button>
+                   </div>
+                   <div className="px-2">
+                      <div className="flex justify-between items-center mb-1">
+                         <h4 className="text-lg font-black text-slate-900 tracking-tight">{item.name}</h4>
+                         <span className="text-xl font-black text-slate-900">₹{item.price}</span>
+                      </div>
+                      <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-relaxed">{item.category} • {item.description.slice(0, 40)}...</p>
+                   </div>
+                </div>
+              ))}
+           </div>
+        </div>
       </div>
 
+      {/* Floating Bottom Navigation */}
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-[420px] bg-slate-900/95 backdrop-blur-2xl h-22 px-12 flex justify-between items-center z-[100] shadow-2xl rounded-[32px] border border-white/10">
+        <button onClick={() => setView('home')} className={`transition-all ${view === 'home' ? 'text-[#E23744] scale-125' : 'text-white/40'}`}><Home className="w-7 h-7" /></button>
+        <button className="text-white/40"><Search className="w-7 h-7" /></button>
+        <button className="text-white/40"><ShoppingBag className="w-7 h-7" /></button>
+        <button onClick={() => setView('profile')} className={`transition-all ${view === 'profile' ? 'text-[#E23744] scale-125' : 'text-white/40'}`}><User className="w-7 h-7" /></button>
+      </div>
+
+      {/* Cart & Sticky Footer Integration */}
       {state.cart.length > 0 && view === 'home' && (
-        <div className="fixed bottom-32 left-8 right-8 z-40 animate-in slide-in-from-bottom-12 duration-500">
+        <div className="fixed bottom-36 left-8 right-8 z-[110] animate-in slide-in-from-bottom duration-500">
            <button 
              onClick={() => setView('cart')}
-             className="w-full bg-slate-900 p-6 rounded-[32px] shadow-2xl flex items-center justify-between group overflow-hidden relative"
+             className="w-full bg-[#E23744] p-5 rounded-[24px] shadow-2xl flex items-center justify-between group overflow-hidden relative"
            >
-              <div className="absolute inset-0 bg-gradient-to-r from-orange-600/20 to-transparent translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-700"></div>
               <div className="flex items-center gap-4 relative z-10">
-                 <div className="w-12 h-12 bg-[#FFC107] rounded-2xl flex items-center justify-center text-slate-900 font-black shadow-lg">
+                 <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-[#E23744] font-black shadow-lg">
                     {state.cart.reduce((a,b) => a + b.quantity, 0)}
                  </div>
                  <div className="text-left">
-                    <h4 className="text-white font-black text-sm uppercase tracking-widest">View Cart</h4>
-                    <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest">Dreamland Hotel</p>
+                    <h4 className="text-white font-black text-xs uppercase tracking-widest">Cart Total</h4>
+                    <p className="text-lg font-black text-white">₹{cartTotal.toFixed(2)}</p>
                  </div>
               </div>
-              <div className="flex items-center gap-4 relative z-10">
-                 <span className="text-xl font-black text-[#FFC107]">₹{cartTotal.toFixed(2)}</span>
-                 <ShoppingBag className="w-6 h-6 text-white" />
+              <div className="flex items-center gap-2 text-white relative z-10 font-black text-xs uppercase tracking-widest">
+                 View Cart <ChevronRight className="w-4 h-4" />
               </div>
            </button>
         </div>
       )}
 
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] bg-slate-900/90 backdrop-blur-2xl h-20 px-10 flex justify-between items-center z-40 shadow-2xl rounded-[32px] border border-white/10">
-        <button onClick={() => setView('home')} className={`transition-all ${view === 'home' ? 'text-[#FFC107] scale-125' : 'text-white/40'}`}><Home className="w-6 h-6" /></button>
-        <button className="text-white/40 hover:text-white transition-all"><Search className="w-6 h-6" /></button>
-        <button className="text-white/40 hover:text-white transition-all"><Heart className="w-6 h-6" /></button>
-        <button onClick={() => setView('profile')} className={`transition-all ${view === 'profile' ? 'text-[#FFC107] scale-125' : 'text-white/40'}`}><User className="w-6 h-6" /></button>
-      </div>
-
-      {view === 'cart' && (
-        <div className="fixed inset-0 z-50 bg-white animate-in slide-in-from-bottom duration-500 flex flex-col">
+      {/* Sub-Views Modals (Overlay) */}
+      {(view === 'cart' || view === 'checkout') && (
+        <div className="fixed inset-0 z-[200] bg-white animate-in slide-in-from-bottom duration-500 flex flex-col">
            <div className="p-8 border-b flex items-center justify-between">
               <button onClick={() => setView('home')} className="p-3 bg-slate-50 rounded-2xl"><ArrowLeft className="w-5 h-5" /></button>
-              <h1 className="text-lg font-black text-slate-900">Your Cart</h1>
-              <button className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Clear All</button>
+              <h1 className="text-lg font-black text-slate-900 tracking-tight">{view === 'cart' ? 'My Cart' : 'Final Step'}</h1>
+              <div className="w-10" />
            </div>
-           
-           <div className="flex-1 overflow-y-auto p-8 space-y-8">
-              {state.cart.map(item => (
-                <div key={item.menuItem.id} className="flex items-center gap-5">
-                   <div className="w-24 h-24 rounded-[32px] overflow-hidden shadow-lg border-4 border-slate-50">
-                      <img src={item.menuItem.image} className="w-full h-full object-cover" />
+
+           <div className="flex-1 overflow-y-auto p-8 space-y-10 hide-scrollbar">
+              {view === 'cart' ? (
+                <>
+                  <div className="space-y-6">
+                    {state.cart.map(item => (
+                      <div key={item.menuItem.id} className="flex items-center gap-5">
+                        <div className="w-20 h-20 rounded-[20px] overflow-hidden border-4 border-slate-50 shadow-lg">
+                            <img src={item.menuItem.image} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-black text-slate-900 text-sm leading-tight mb-1">{item.menuItem.name}</h4>
+                            <p className="text-lg font-black text-slate-900">₹{item.menuItem.price}</p>
+                        </div>
+                        <div className="bg-slate-50 p-1.5 rounded-full flex flex-col items-center gap-3 border">
+                            <button onClick={() => addToCart(item.menuItem, 1)} className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-900 shadow-sm"><Plus className="w-4 h-4" /></button>
+                            <span className="font-black text-sm">{item.quantity}</span>
+                            <button onClick={() => removeFromCart(item.menuItem.id)} className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-300 shadow-sm"><Minus className="w-4 h-4" /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-8 space-y-4">
+                    <h3 className="text-xs font-black text-slate-300 uppercase tracking-widest">Bill Details</h3>
+                    <div className="space-y-3 bg-slate-50 p-6 rounded-[32px] border">
+                      <div className="flex justify-between items-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                        <span>Items Total</span>
+                        <span>₹{cartTotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                        <span>Delivery Fee</span>
+                        <span className="text-green-500">FREE</span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                        <span>Govt Taxes & GST</span>
+                        <span>₹25.00</span>
+                      </div>
+                      <div className="pt-4 border-t border-dashed flex justify-between items-center">
+                        <span className="text-xl font-black text-slate-900 tracking-tighter">Grand Total</span>
+                        <span className="text-2xl font-black text-slate-900">₹{finalTotal.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-10">
+                   <div className="space-y-4">
+                      <h3 className="text-xs font-black text-slate-300 uppercase tracking-widest">Choose Address</h3>
+                      <div className="grid grid-cols-3 gap-4">
+                         {['Home', 'Work', 'Other'].map(type => (
+                           <button key={type} className={`py-4 rounded-[20px] font-black text-[10px] uppercase tracking-widest border-2 transition-all ${type === 'Home' ? 'bg-red-50 border-[#E23744] text-[#E23744]' : 'bg-slate-50 border-transparent text-slate-400'}`}>
+                             {type === 'Home' ? <Home className="w-4 h-4 mx-auto mb-2" /> : type === 'Work' ? <Briefcase className="w-4 h-4 mx-auto mb-2" /> : <MapIcon className="w-4 h-4 mx-auto mb-2" />}
+                             {type}
+                           </button>
+                         ))}
+                      </div>
+                      <div className="p-6 bg-slate-50 rounded-[32px] border flex gap-4">
+                         <MapPin className="w-6 h-6 text-[#E23744] flex-shrink-0" />
+                         <div>
+                            <h4 className="font-black text-sm text-slate-900">{state.currentLocation?.address.split(',')[0]}</h4>
+                            <p className="text-[10px] text-slate-400 font-bold leading-relaxed mt-1 uppercase truncate max-w-[200px]">{state.currentLocation?.address}</p>
+                         </div>
+                      </div>
                    </div>
-                   <div className="flex-1">
-                      <h4 className="font-black text-sm text-slate-900 mb-1">{item.menuItem.name}</h4>
-                      <p className="text-lg font-black text-slate-900">₹{item.menuItem.price}</p>
-                   </div>
-                   <div className="bg-slate-50 p-1.5 rounded-full flex flex-col items-center gap-3">
-                      <button onClick={() => addToCart(item.menuItem, 1)} className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-900 shadow-sm"><Plus className="w-3 h-3" /></button>
-                      <span className="font-black text-sm">{item.quantity}</span>
-                      <button onClick={() => removeFromCart(item.menuItem.id)} className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-300 shadow-sm"><Minus className="w-3 h-3" /></button>
+
+                   <div className="space-y-4">
+                      <h3 className="text-xs font-black text-slate-300 uppercase tracking-widest">Payment Method</h3>
+                      <div className="space-y-3">
+                         {[
+                           { name: 'UPI (GPay/PhonePe)', icon: <Zap className="w-5 h-5" />, color: 'bg-purple-100 text-purple-600' },
+                           { name: 'Credit/Debit Cards', icon: <CardIcon className="w-5 h-5" />, color: 'bg-blue-100 text-blue-600' },
+                           { name: 'Cash on Delivery', icon: <Wallet className="w-5 h-5" />, color: 'bg-green-100 text-green-600' }
+                         ].map((m, i) => (
+                           <div key={i} className={`p-6 rounded-[24px] border flex items-center justify-between cursor-pointer hover:border-[#E23744] transition-all ${i === 0 ? 'bg-slate-50 border-[#E23744]/20' : 'bg-white'}`}>
+                              <div className="flex items-center gap-4">
+                                 <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${m.color}`}>{m.icon}</div>
+                                 <span className="text-sm font-black text-slate-900">{m.name}</span>
+                              </div>
+                              <div className={`w-5 h-5 rounded-full border-2 ${i === 0 ? 'border-[#E23744] bg-[#E23744]' : 'border-slate-200'}`} />
+                           </div>
+                         ))}
+                      </div>
                    </div>
                 </div>
-              ))}
-
-              <div className="pt-8 space-y-4">
-                 <div className="flex justify-between items-center text-slate-400 font-bold text-xs uppercase tracking-widest">
-                    <span>Item Total</span>
-                    <span>₹{cartTotal.toFixed(2)}</span>
-                 </div>
-                 <div className="flex justify-between items-center text-slate-400 font-bold text-xs uppercase tracking-widest">
-                    <span>Delivery Fee</span>
-                    <span className="text-green-500">FREE</span>
-                 </div>
-                 <div className="flex justify-between items-center text-slate-400 font-bold text-xs uppercase tracking-widest">
-                    <span>Taxes & GST</span>
-                    <span>₹25.00</span>
-                 </div>
-                 <div className="pt-4 border-t border-dashed border-slate-200 flex justify-between items-center">
-                    <span className="text-xl font-black text-slate-900">Total Bill</span>
-                    <span className="text-2xl font-black text-slate-900">₹{(cartTotal + 25).toFixed(2)}</span>
-                 </div>
-              </div>
+              )}
            </div>
 
-           <div className="p-8 space-y-4">
-              <div className="bg-slate-50 p-6 rounded-[32px] flex items-center justify-between border border-slate-100">
-                 <div className="flex items-center gap-4">
-                    <div className="bg-white p-3 rounded-2xl shadow-sm text-orange-600"><CreditCard className="w-5 h-5" /></div>
-                    <div>
-                       <h4 className="text-xs font-black">UPI • GPay</h4>
-                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Payment Method</p>
-                    </div>
-                 </div>
-                 <button className="text-[10px] font-black text-orange-600 uppercase">Change</button>
-              </div>
+           <div className="p-8 space-y-4 border-t">
               <button 
-                onClick={placeOrder}
-                className="w-full bg-[#FFC107] text-slate-900 py-6 rounded-[32px] font-black text-sm uppercase tracking-widest shadow-xl shadow-yellow-100 active:scale-95 transition-all flex items-center justify-center gap-4"
+                onClick={() => view === 'cart' ? setView('checkout') : placeOrder()}
+                disabled={isLoading}
+                className="w-full bg-[#E23744] text-white py-6 rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-4"
               >
-                {isLoading ? "Processing..." : "Place Order • ₹" + (cartTotal + 25).toFixed(2)}
+                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                  <> {view === 'cart' ? 'Proceed to Checkout' : `Pay ₹${finalTotal.toFixed(2)}`} <ChevronRight className="w-4 h-4" /></>
+                )}
               </button>
            </div>
         </div>

@@ -6,7 +6,7 @@ import {
   Search, MapPin, ShoppingBag, Clock, Star, ArrowLeft, Plus, Minus, X, 
   CheckCircle, Navigation, Phone, MessageSquare, ChevronRight, Heart, 
   Tag, User, Filter, SlidersHorizontal, Bell, Flame, Map as MapIcon, 
-  CreditCard, Wallet, Home, Briefcase, MoreHorizontal, History 
+  CreditCard, Wallet, Home, Briefcase, MoreHorizontal, History, Settings 
 } from 'lucide-react';
 
 interface Props {
@@ -93,6 +93,39 @@ const CustomerApp: React.FC<Props> = ({ state, setState }) => {
             Confirm Location
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (view === 'profile') {
+    return (
+      <div className="flex flex-col h-full bg-white animate-in slide-in-from-right duration-500 p-8">
+         <button onClick={() => setView('home')} className="p-3 bg-slate-50 rounded-2xl w-fit mb-10"><ArrowLeft className="w-5 h-5" /></button>
+         <div className="flex flex-col items-center mb-12">
+            <div className="w-32 h-32 rounded-[48px] overflow-hidden border-4 border-slate-50 shadow-2xl mb-6">
+               <img src="https://picsum.photos/seed/user1/200/200" className="w-full h-full object-cover" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900">Premium Member</h2>
+            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">{state.userEmail}</p>
+         </div>
+
+         <div className="space-y-4">
+            {[
+               { icon: <History className="w-5 h-5 text-blue-500" />, label: 'My Orders' },
+               { icon: <CreditCard className="w-5 h-5 text-purple-500" />, label: 'Payment Methods' },
+               { icon: <MapPin className="w-5 h-5 text-orange-500" />, label: 'My Addresses' },
+               { icon: <Bell className="w-5 h-5 text-red-500" />, label: 'Notifications' },
+               { icon: <Settings className="w-5 h-5 text-slate-400" />, label: 'Settings' }
+            ].map((item, i) => (
+               <div key={i} className="flex items-center gap-5 p-5 bg-slate-50 rounded-[28px] border border-slate-100 hover:bg-white hover:border-orange-100 transition-all cursor-pointer group">
+                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                     {item.icon}
+                  </div>
+                  <span className="flex-1 font-black text-sm text-slate-900">{item.label}</span>
+                  <ChevronRight className="w-4 h-4 text-slate-300" />
+               </div>
+            ))}
+         </div>
       </div>
     );
   }
@@ -249,7 +282,7 @@ const CustomerApp: React.FC<Props> = ({ state, setState }) => {
                  <Bell className="w-5 h-5" />
                  <span className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full ring-4 ring-white"></span>
               </button>
-              <button className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-slate-50">
+              <button onClick={() => setView('profile')} className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-slate-50">
                  <img src="https://picsum.photos/seed/user1/100/100" />
               </button>
            </div>
@@ -355,7 +388,7 @@ const CustomerApp: React.FC<Props> = ({ state, setState }) => {
         <button onClick={() => setView('home')} className={`transition-all ${view === 'home' ? 'text-[#FFC107] scale-125' : 'text-white/40'}`}><Home className="w-6 h-6" /></button>
         <button className="text-white/40 hover:text-white transition-all"><Search className="w-6 h-6" /></button>
         <button className="text-white/40 hover:text-white transition-all"><Heart className="w-6 h-6" /></button>
-        <button className="transition-all text-white/40 hover:text-white"><User className="w-6 h-6" /></button>
+        <button onClick={() => setView('profile')} className={`transition-all ${view === 'profile' ? 'text-[#FFC107] scale-125' : 'text-white/40'}`}><User className="w-6 h-6" /></button>
       </div>
 
       {view === 'cart' && (

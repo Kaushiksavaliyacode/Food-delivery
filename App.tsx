@@ -5,7 +5,7 @@ import CustomerApp from './screens/CustomerApp.tsx';
 import RestaurantApp from './screens/RestaurantApp.tsx';
 import DeliveryApp from './screens/DeliveryApp.tsx';
 import AdminPanel from './screens/AdminPanel.tsx';
-import { Lock, User as UserIcon, ShieldCheck, Phone, Smartphone, ChevronRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, Smartphone, ChevronRight, ArrowLeft, LogIn } from 'lucide-react';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>({
@@ -18,56 +18,41 @@ const App: React.FC = () => {
   });
 
   // Login UI states
-  const [loginMode, setLoginMode] = useState<'phone' | 'admin'>('phone');
-  const [authStep, setAuthStep] = useState<'input' | 'otp' | 'role'>('input');
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '']);
-  const [username, setUsername] = useState('');
+  const [authStep, setAuthStep] = useState<'login' | 'role'>('login');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleAdminLogin = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    // Master bypasses for testing as requested
-    if (username === 'A' && password === 'A') {
-      setAppState(prev => ({ ...prev, role: UserRole.ADMIN, isLoggedIn: true }));
-    } else if (username === 'B' && password === 'B') {
-      setAppState(prev => ({ ...prev, role: UserRole.CUSTOMER, isLoggedIn: true }));
-    } else if (username === 'D' && password === 'D') {
-      setAppState(prev => ({ ...prev, role: UserRole.DELIVERY, isLoggedIn: true }));
-    } else if (username === 'R' && password === 'R') {
-      setAppState(prev => ({ ...prev, role: UserRole.RESTAURANT, isLoggedIn: true }));
-    } else {
-      setError('Invalid admin credentials.');
-    }
-  };
 
-  const handlePhoneSubmit = () => {
-    if (phone.length < 10) {
-      setError('Enter a valid 10-digit number');
+    if (!email.includes('@')) {
+      setError('Please enter a valid email address');
       return;
     }
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setAuthStep('otp');
-      setError('');
-    }, 800);
-  };
-
-  const handleOtpSubmit = () => {
-    if (otp.some(d => d === '')) {
-      setError('Complete the 4-digit OTP');
+    if (password.length < 4) {
+      setError('Password must be at least 4 characters');
       return;
     }
+
     setIsLoading(true);
+    // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
-      setAuthStep('role');
-      setError('');
-    }, 800);
+      // Hardcoded "Admin" bypass or general "Success"
+      if (email === 'admin@foodgo.com' && password === 'admin') {
+        setAppState(prev => ({
+          ...prev,
+          role: UserRole.ADMIN,
+          isLoggedIn: true,
+          userEmail: email
+        }));
+      } else {
+        setAuthStep('role');
+      }
+    }, 1200);
   };
 
   const selectRoleAndLogin = (role: UserRole) => {
@@ -75,7 +60,7 @@ const App: React.FC = () => {
       ...prev,
       role: role,
       isLoggedIn: true,
-      userPhone: `+91${phone}`
+      userEmail: email
     }));
   };
 
@@ -88,12 +73,10 @@ const App: React.FC = () => {
       activeOrder: null,
       isLoggedIn: false
     });
-    setAuthStep('input');
-    setPhone('');
-    setOtp(['', '', '', '']);
-    setUsername('');
+    setAuthStep('login');
+    setEmail('');
     setPassword('');
-    setLoginMode('phone');
+    setError('');
   };
 
   const renderApp = () => {
@@ -121,135 +104,30 @@ const App: React.FC = () => {
           
           <div className="text-center mb-10 relative z-10">
             <div className="w-20 h-20 bg-orange-500 rounded-[28px] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-orange-500/20 animate-in zoom-in duration-500">
-              <Smartphone className="w-10 h-10 text-white" />
+              <LogIn className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-3xl font-black text-slate-900 mb-2">FoodGo</h1>
-            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em]">India's Next-Gen Fleet</p>
+            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em]">Dreamland Ecosystem</p>
           </div>
 
           <div className="flex-1 flex flex-col relative z-10">
-            {loginMode === 'phone' ? (
-              <div className="space-y-6 animate-in slide-in-from-right duration-500">
-                {authStep === 'input' && (
-                  <>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3 block">Phone Number</label>
-                      <div className="flex gap-3">
-                        <div className="bg-slate-50 rounded-2xl px-5 py-4 font-black text-slate-900 border border-slate-100">+91</div>
-                        <input 
-                          type="tel" 
-                          maxLength={10}
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                          className="flex-1 bg-slate-50 border-2 border-transparent focus:border-orange-500/20 focus:bg-white rounded-2xl py-4 px-6 outline-none transition-all font-bold text-lg text-slate-900"
-                          placeholder="98765 43210"
-                        />
-                      </div>
-                      {error && <p className="text-red-500 text-[10px] font-black uppercase mt-2 ml-1">{error}</p>}
-                    </div>
-                    <button 
-                      onClick={handlePhoneSubmit}
-                      disabled={isLoading || phone.length < 10}
-                      className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-                    >
-                      {isLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <>Send Verification Code <ChevronRight className="w-4 h-4" /></>}
-                    </button>
-                    <button 
-                      onClick={() => setLoginMode('admin')}
-                      className="w-full text-[10px] font-black text-slate-300 uppercase tracking-widest hover:text-slate-500 transition-colors mt-4"
-                    >
-                      Switch to ID/Pass Login
-                    </button>
-                  </>
-                )}
-
-                {authStep === 'otp' && (
-                  <div className="animate-in fade-in slide-in-from-right duration-500">
-                    <button onClick={() => setAuthStep('input')} className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 hover:text-slate-900 transition-colors">
-                      <ArrowLeft className="w-4 h-4" /> Change Number
-                    </button>
-                    <h2 className="text-xl font-black text-slate-900 mb-2">Verify Phone</h2>
-                    <p className="text-xs text-slate-400 font-medium mb-8">OTP sent to +91 {phone}</p>
-                    
-                    <div className="flex justify-between gap-4 mb-10">
-                      {otp.map((digit, i) => (
-                        <input 
-                          key={i}
-                          type="text"
-                          maxLength={1}
-                          className="w-14 h-16 bg-slate-50 rounded-2xl text-center text-2xl font-black border-2 border-transparent focus:border-orange-500 focus:bg-white outline-none transition-all"
-                          value={digit}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, '');
-                            if (val.length > 1) return;
-                            const next = [...otp];
-                            next[i] = val;
-                            setOtp(next);
-                            if (val && i < 3) {
-                              const nextInput = e.currentTarget.nextElementSibling as HTMLInputElement;
-                              nextInput?.focus();
-                            }
-                          }}
-                        />
-                      ))}
-                    </div>
-
-                    <button 
-                      onClick={handleOtpSubmit}
-                      disabled={isLoading}
-                      className="w-full bg-orange-600 text-white py-5 rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl shadow-orange-600/20 active:scale-95 transition-all"
-                    >
-                      {isLoading ? "Verifying..." : "Verify OTP"}
-                    </button>
-                  </div>
-                )}
-
-                {authStep === 'role' && (
-                  <div className="animate-in fade-in slide-in-from-bottom duration-500">
-                    <h2 className="text-xl font-black text-slate-900 mb-2 text-center">Verification Success!</h2>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-10 text-center">Select your role to proceed</p>
-                    
-                    <div className="space-y-4">
-                      {[
-                        { role: UserRole.CUSTOMER, label: 'Hungry Customer', desc: 'Order delicious food', icon: '🍔' },
-                        { role: UserRole.RESTAURANT, label: 'Restaurant Partner', desc: 'Manage your kitchen', icon: '🏪' },
-                        { role: UserRole.DELIVERY, label: 'Delivery Partner', desc: 'Deliver & earn big', icon: '🛵' }
-                      ].map((r) => (
-                        <button 
-                          key={r.role}
-                          onClick={() => selectRoleAndLogin(r.role)}
-                          className="w-full flex items-center gap-5 p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl hover:border-orange-500 hover:bg-white transition-all group"
-                        >
-                          <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center text-2xl group-hover:bg-orange-50 transition-colors">{r.icon}</div>
-                          <div className="text-left">
-                            <h4 className="font-black text-slate-900 text-sm">{r.label}</h4>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{r.desc}</p>
-                          </div>
-                          <ChevronRight className="w-5 h-5 ml-auto text-slate-200 group-hover:text-orange-500 transition-colors" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <form onSubmit={handleAdminLogin} className="space-y-6 animate-in slide-in-from-left duration-500">
-                <button onClick={() => setLoginMode('phone')} className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 hover:text-slate-900 transition-colors">
-                  <ArrowLeft className="w-4 h-4" /> Back to Phone Login
-                </button>
+            {authStep === 'login' ? (
+              <form onSubmit={handleLogin} className="space-y-6 animate-in slide-in-from-right duration-500">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Username / ID</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Email Address</label>
                   <div className="relative">
-                    <UserIcon className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
+                    <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
                     <input 
-                      type="text" 
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      type="email" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className="w-full bg-slate-50 border-2 border-transparent focus:border-orange-500/20 focus:bg-white rounded-2xl py-4 pl-14 pr-6 outline-none transition-all font-bold text-slate-900"
-                      placeholder="Enter ID (A, B, D, R)"
+                      placeholder="name@example.com"
+                      required
                     />
                   </div>
                 </div>
+
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Password</label>
                   <div className="relative">
@@ -259,23 +137,68 @@ const App: React.FC = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full bg-slate-50 border-2 border-transparent focus:border-orange-500/20 focus:bg-white rounded-2xl py-4 pl-14 pr-6 outline-none transition-all font-bold text-slate-900"
-                      placeholder="••••"
+                      placeholder="••••••••"
+                      required
                     />
                   </div>
                 </div>
-                {error && <p className="text-red-500 text-[10px] font-black uppercase text-center">{error}</p>}
+
+                {error && <p className="text-red-500 text-[10px] font-black uppercase text-center animate-bounce">{error}</p>}
+
                 <button 
                   type="submit"
-                  className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                  disabled={isLoading}
+                  className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                 >
-                  Authorize Access
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <>Sign In <ChevronRight className="w-4 h-4" /></>
+                  )}
                 </button>
+
+                <div className="text-center pt-4">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+                    Test Accounts:<br/>
+                    Any Email + 4-char Pass<br/>
+                    <span className="text-orange-500">admin@foodgo.com / admin</span>
+                  </p>
+                </div>
               </form>
+            ) : (
+              <div className="animate-in fade-in slide-in-from-bottom duration-500">
+                <button onClick={() => setAuthStep('login')} className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 hover:text-slate-900 transition-colors">
+                  <ArrowLeft className="w-4 h-4" /> Back to Login
+                </button>
+                <h2 className="text-xl font-black text-slate-900 mb-2 text-center">Login Success!</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-10 text-center">Welcome {email}</p>
+                
+                <div className="space-y-4">
+                  {[
+                    { role: UserRole.CUSTOMER, label: 'Hungry Customer', desc: 'Order delicious food', icon: '🍔' },
+                    { role: UserRole.RESTAURANT, label: 'Restaurant Partner', desc: 'Manage your kitchen', icon: '🏪' },
+                    { role: UserRole.DELIVERY, label: 'Delivery Partner', desc: 'Deliver & earn big', icon: '🛵' }
+                  ].map((r) => (
+                    <button 
+                      key={r.role}
+                      onClick={() => selectRoleAndLogin(r.role)}
+                      className="w-full flex items-center gap-5 p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl hover:border-orange-500 hover:bg-white transition-all group"
+                    >
+                      <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center text-2xl group-hover:bg-orange-50 transition-colors">{r.icon}</div>
+                      <div className="text-left">
+                        <h4 className="font-black text-slate-900 text-sm">{r.label}</h4>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{r.desc}</p>
+                      </div>
+                      <ChevronRight className="w-5 h-5 ml-auto text-slate-200 group-hover:text-orange-500 transition-colors" />
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
           
           <div className="mt-auto pt-6 text-center opacity-40">
-             <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Secured Gateway v2.1</p>
+             <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">FoodGo Authentication v3.0</p>
           </div>
         </div>
       </div>

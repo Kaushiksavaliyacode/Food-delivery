@@ -4,7 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FoodGo - Fast Delivery</title>
+    <meta name="theme-color" content="#E23744">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Kaushik Food">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3448/3448609.png">
+    <link rel="manifest" href="manifest.json">
+    <title>Kaushik Food - Fast Delivery</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -26,5 +32,14 @@
 </head>
 <body class="bg-slate-50 text-slate-900 overflow-x-hidden">
     <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker registered', reg))
+            .catch(err => console.error('Service Worker registration failed', err));
+        });
+      }
+    </script>
 </body>
 </html>

@@ -6,14 +6,6 @@ export enum UserRole {
   ADMIN = 'ADMIN'
 }
 
-export interface UserProfile {
-  id: string;
-  phone: string;
-  name: string;
-  email?: string;
-  addresses: Location[];
-}
-
 export interface MenuItem {
   id: string;
   name: string;
@@ -27,12 +19,10 @@ export interface MenuItem {
 }
 
 export interface Location {
-  id?: string;
   lat: number;
   lng: number;
   address: string;
-  landmark?: string;
-  type: 'Home' | 'Work' | 'Other';
+  type?: 'Home' | 'Work' | 'Other';
 }
 
 export interface Restaurant {
@@ -40,11 +30,9 @@ export interface Restaurant {
   name: string;
   cuisine: string[];
   rating: number;
-  ratingCount: number;
   deliveryTime: number;
   distance: number;
   image: string;
-  photos: string[];
   priceRange: 1 | 2 | 3 | 4;
   menu: MenuItem[];
   location: Location;
@@ -57,18 +45,14 @@ export interface CartItem {
 }
 
 export enum OrderStatus {
-  CONFIRMED = 'CONFIRMED',
+  PENDING = 'PENDING',
+  ACCEPTED = 'ACCEPTED',
   PREPARING = 'PREPARING',
+  READY_FOR_PICKUP = 'READY_FOR_PICKUP',
   PICKED_UP = 'PICKED_UP',
   ARRIVING = 'ARRIVING',
   DELIVERED = 'DELIVERED',
   CANCELLED = 'CANCELLED'
-}
-
-export interface OrderTimeline {
-  status: OrderStatus;
-  timestamp: number;
-  message: string;
 }
 
 export interface Order {
@@ -79,7 +63,6 @@ export interface Order {
   items: CartItem[];
   totalAmount: number;
   status: OrderStatus;
-  timeline: OrderTimeline[];
   timestamp: number;
   deliveryLocation: Location;
   riderLocation?: { lat: number, lng: number };
@@ -87,10 +70,10 @@ export interface Order {
 
 export interface AppState {
   role: UserRole;
-  user: UserProfile | null;
   currentLocation: Location | null;
+  savedAddresses: Location[];
   cart: CartItem[];
   activeOrder: Order | null;
   isLoggedIn: boolean;
-  theme: 'light' | 'dark';
+  userPhone?: string;
 }

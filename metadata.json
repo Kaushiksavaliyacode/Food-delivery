@@ -1,0 +1,8 @@
+{
+  "name": "FoodGo - Next Gen Delivery Ecosystem",
+  "description": "A comprehensive multi-role food delivery platform for customers, restaurants, and delivery partners.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ]
+}

@@ -1,7 +1,6 @@
 
 export enum UserRole {
   CUSTOMER = 'CUSTOMER',
-  RESTAURANT = 'RESTAURANT',
   DELIVERY = 'DELIVERY',
   ADMIN = 'ADMIN'
 }
@@ -9,7 +8,9 @@ export enum UserRole {
 export interface MenuItem {
   id: string;
   name: string;
+  nameGujarati?: string;
   description: string;
+  descriptionGujarati?: string;
   price: number;
   category: string;
   image: string;
@@ -28,6 +29,7 @@ export interface Location {
 export interface Restaurant {
   id: string;
   name: string;
+  nameGujarati?: string;
   cuisine: string[];
   rating: number;
   deliveryTime: number;
@@ -48,17 +50,18 @@ export enum OrderStatus {
   PENDING = 'PENDING',
   ACCEPTED = 'ACCEPTED',
   PREPARING = 'PREPARING',
-  READY_FOR_PICKUP = 'READY_FOR_PICKUP',
-  PICKED_UP = 'PICKED_UP',
-  ARRIVING = 'ARRIVING',
+  ON_WAY = 'ON_WAY',
   DELIVERED = 'DELIVERED',
-  CANCELLED = 'CANCELLED'
+  CANCELLED = 'CANCELLED',
+  COMPLETED = 'COMPLETED'
 }
 
 export interface Order {
   id: string;
   customerId: string;
+  customerName: string;
   restaurantId: string;
+  restaurantName: string;
   riderId?: string;
   items: CartItem[];
   totalAmount: number;

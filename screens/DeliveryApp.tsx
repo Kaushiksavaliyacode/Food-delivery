@@ -1,152 +1,185 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Navigation, CheckCircle2, DollarSign, ListTodo, User, ShieldCheck, 
   Camera, Phone, MapPin, ChevronRight, Zap, History, TrendingUp,
-  MessageSquare, Star, ArrowLeft, Loader2, Play
+  MessageSquare, Star, ArrowLeft, Loader2, Play, Package, Clock, X, CheckCircle, Cloud
 } from 'lucide-react';
+import { OrderStatus } from '../types.ts';
+import { db } from '../firebase.ts';
+import { collection, onSnapshot, query, updateDoc, doc, orderBy } from 'firebase/firestore';
 
 const DeliveryApp: React.FC = () => {
-  const [view, setView] = useState<'kyc' | 'dashboard' | 'task' | 'map'>('kyc');
-  const [isOnline, setIsOnline] = useState(false);
-  const [kycStep, setKycStep] = useState(0);
+  const [view, setView] = useState<'dashboard' | 'map' | 'history'>('dashboard');
+  const [isOnline, setIsOnline] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<OrderStatus | 'ALL'>(OrderStatus.PENDING);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [trackingOrder, setTrackingOrder] = useState<any | null>(null);
 
-  if (view === 'kyc') return (
-    <div className="h-full bg-slate-900 text-white p-10 flex flex-col animate-in fade-in duration-500 font-['Plus_Jakarta_Sans']">
-      <div className="flex-1 flex flex-col justify-center">
-        <div className="w-24 h-24 bg-[#E23744] rounded-[36px] flex items-center justify-center mb-10 shadow-2xl shadow-red-500/20">
-          <ShieldCheck className="w-12 h-12" />
-        </div>
-        <h1 className="text-4xl font-black mb-4 leading-tight">Elite Fleet <br/>Onboarding</h1>
-        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mb-16 leading-loose">Verify documents to start earning <br/>with FoodGo delivery network.</p>
-        <div className="space-y-4">
-          {['Selfie ID Scan', 'Driving License', 'Vehicle Registration'].map((step, i) => (
-            <div key={i} className={`flex items-center gap-5 p-6 rounded-[32px] border-2 transition-all ${kycStep === i ? 'bg-white/5 border-red-500' : 'bg-white/5 border-transparent opacity-50'}`}>
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black ${kycStep > i ? 'bg-green-500' : 'bg-white/10'}`}>
-                {kycStep > i ? <CheckCircle2 className="w-5 h-5" /> : i + 1}
-              </div>
-              <div className="flex-1">
-                <h4 className="font-black text-sm">{step}</h4>
-                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Required</p>
-              </div>
-              {kycStep === i && <button onClick={() => setKycStep(i + 1)} className="p-3 bg-white text-slate-900 rounded-xl active:scale-90 transition"><Camera className="w-5 h-5" /></button>}
-            </div>
-          ))}
-        </div>
+  // Sync Orders from Firestore
+  useEffect(() => {
+    const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const liveOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setOrders(liveOrders);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const filteredOrders = orders.filter(o => activeFilter === 'ALL' || o.status === activeFilter);
+
+  const updateStatus = async (id: string, newStatus: OrderStatus) => {
+    try {
+      await updateDoc(doc(db, "orders", id), { status: newStatus });
+    } catch (err) {
+      console.error("Failed to update status:", err);
+    }
+  };
+
+  if (view === 'map' && trackingOrder) return (
+    <div className="h-full bg-slate-900 text-white flex flex-col animate-in slide-in-from-bottom duration-500 font-['Plus_Jakarta_Sans']">
+      <div className="flex-1 bg-slate-200 relative">
+          <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/navigation-day-v1/static/-118.245,34.055,14,0/600x600?access_token=pk.eyJ1IjoibW9ja3VzZXIiLCJhIjoiY2p4eCJ9')] bg-cover" />
+          <button onClick={() => setView('dashboard')} className="absolute top-12 left-6 p-4 bg-white rounded-2xl shadow-2xl text-slate-900"><ArrowLeft className="w-6 h-6" /></button>
+          <div className="absolute top-12 left-20 right-6 bg-slate-900 p-6 rounded-[32px] text-white flex items-center gap-4 shadow-2xl border border-white/10">
+             <Navigation className="w-8 h-8 text-orange-500 animate-pulse" />
+             <div>
+                <h3 className="font-black text-sm">Target: {trackingOrder.deliveryLocation?.address}</h3>
+                <p className="text-[8px] text-slate-400 uppercase tracking-widest font-black">{trackingOrder.customerName} • Live Location Tracking</p>
+             </div>
+          </div>
       </div>
-      <button 
-        disabled={kycStep < 3}
-        onClick={() => { setView('dashboard'); setIsOnline(true); }}
-        className="w-full bg-[#E23744] text-white py-7 rounded-[32px] font-black text-sm uppercase tracking-widest shadow-2xl active:scale-95 transition-all disabled:opacity-20 mt-10"
-      >
-        Complete & Start Earning
-      </button>
+      <div className="h-[35%] bg-white rounded-t-[48px] p-10 -mt-12 relative z-10 shadow-2xl">
+         <div className="flex justify-between items-center mb-10">
+            <div>
+               <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Customer Delivery</p>
+               <h2 className="text-2xl font-black text-slate-900 tracking-tight">{trackingOrder.customerName}</h2>
+            </div>
+            <div className="flex gap-3">
+               <button className="bg-slate-50 p-4 rounded-2xl border text-slate-600 shadow-sm"><Phone className="w-6 h-6" /></button>
+            </div>
+         </div>
+         <button onClick={() => { updateStatus(trackingOrder.id, OrderStatus.DELIVERED); setView('dashboard'); }} className="w-full bg-green-600 text-white py-6 rounded-[28px] font-black text-xs uppercase tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3">
+            <CheckCircle2 className="w-5 h-5" /> Confirm Delivered
+         </button>
+      </div>
     </div>
   );
 
   return (
-    <div className="h-full bg-slate-50 flex flex-col animate-in fade-in duration-500 font-['Plus_Jakarta_Sans']">
-      <div className="bg-slate-900 text-white p-10 pb-24 rounded-b-[56px] shadow-2xl relative">
-        <div className="flex justify-between items-center mb-12">
-           <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-[24px] overflow-hidden border-2 border-white/10 shadow-2xl">
-                 <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=DeliveryAlex" className="w-full h-full object-cover" />
+    <div className="h-full bg-slate-50 flex flex-col font-['Plus_Jakarta_Sans']">
+      
+      {/* Header Profile */}
+      <div className="p-8 bg-slate-900 text-white rounded-b-[48px] shadow-2xl relative">
+        <div className="flex justify-between items-center mb-10">
+           <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white/20">
+                 <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=RiderGondal" className="w-full h-full object-cover" />
               </div>
               <div>
-                <h2 className="font-black text-xl">Captain Alex</h2>
-                <div className="flex items-center gap-2 mt-1">
-                   <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-slate-500'} animate-pulse`} />
-                   <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest">{isOnline ? 'Live • Fleet Online' : 'Offline'}</span>
-                </div>
+                 <div className="flex items-center gap-2">
+                    <h2 className="font-black text-lg">Gondal Fleet</h2>
+                    <Cloud className="w-4 h-4 text-blue-400" />
+                 </div>
+                 <p className={`text-[8px] font-black uppercase tracking-widest ${isOnline ? 'text-green-400' : 'text-slate-400'}`}>
+                    {isOnline ? 'Online • Live Cloud Sync' : 'Offline'}
+                 </p>
               </div>
            </div>
-           <button 
-            onClick={() => setIsOnline(!isOnline)}
-            className={`px-6 py-3 rounded-2xl text-[10px] font-black tracking-widest transition-all ${isOnline ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-[#FFC107] text-slate-900'}`}
-           >
-             {isOnline ? 'GO OFFLINE' : 'GO ONLINE'}
+           <button onClick={() => setIsOnline(!isOnline)} className={`px-4 py-2 rounded-xl text-[9px] font-black border transition-all ${isOnline ? 'bg-red-500/10 border-red-500/30 text-red-500' : 'bg-green-500 text-slate-900 border-transparent'}`}>
+              {isOnline ? 'GO OFFLINE' : 'GO ONLINE'}
            </button>
         </div>
-        <div className="grid grid-cols-2 gap-5 absolute bottom-0 left-10 right-10 translate-y-1/2">
-           <div className="bg-white rounded-[32px] p-8 shadow-2xl border border-slate-100">
-              <div className="flex items-center gap-3 mb-3 text-slate-300"><DollarSign className="w-5 h-5 text-orange-600" /> <span className="text-[9px] font-black uppercase">Earnings</span></div>
-              <p className="text-3xl font-black text-slate-900">₹1,420</p>
+        <div className="grid grid-cols-2 gap-4">
+           <div className="bg-white/5 p-5 rounded-3xl border border-white/10 backdrop-blur-md">
+              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Active Duties</p>
+              <p className="text-xl font-black mt-1">{orders.filter(o => o.status === OrderStatus.ON_WAY).length}</p>
            </div>
-           <div className="bg-white rounded-[32px] p-8 shadow-2xl border border-slate-100">
-              <div className="flex items-center gap-3 mb-3 text-slate-300"><Zap className="w-5 h-5 text-green-600" /> <span className="text-[9px] font-black uppercase">Tasks</span></div>
-              <p className="text-3xl font-black text-slate-900">12</p>
+           <div className="bg-white/5 p-5 rounded-3xl border border-white/10 backdrop-blur-md">
+              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Global Queue</p>
+              <p className="text-xl font-black mt-1">{orders.filter(o => o.status === OrderStatus.PENDING).length}</p>
            </div>
         </div>
       </div>
 
-      <div className="flex-1 p-10 pt-28 space-y-12 overflow-y-auto hide-scrollbar">
-         <div className="animate-in slide-in-from-bottom duration-700">
-            <div className="flex justify-between items-center mb-8 px-2">
-               <h3 className="text-2xl font-black text-slate-900">Active Duty</h3>
-               <span className="bg-orange-100 text-orange-600 px-4 py-2 rounded-full font-black text-[9px] uppercase tracking-widest border border-orange-200 animate-pulse">New Task</span>
-            </div>
-            <div className="bg-white rounded-[48px] p-10 shadow-2xl border border-slate-100 relative group overflow-hidden">
-               <div className="flex justify-between items-start mb-12">
-                  <div className="flex items-center gap-5">
-                     <div className="w-16 h-16 bg-orange-600 rounded-3xl flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-orange-600/20">D</div>
-                     <div>
-                       <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Pickup At</p>
-                       <h4 className="font-black text-slate-900 text-lg">Dreamland Hotel</h4>
-                       <p className="text-[10px] text-orange-600 font-black uppercase mt-1">1.2 KM AWAY</p>
-                     </div>
-                  </div>
-                  <div className="text-right">
-                     <span className="text-3xl font-black text-slate-900">₹85</span>
-                     <p className="text-[9px] text-green-600 font-bold uppercase mt-1">+ ₹10 BONUS</p>
-                  </div>
-               </div>
-               <div className="flex gap-4">
-                  <button className="flex-1 bg-slate-50 py-6 rounded-[28px] text-[10px] font-black uppercase text-slate-400">Reject</button>
-                  <button onClick={() => setView('map')} className="flex-[2] bg-slate-900 text-white py-6 rounded-[28px] text-[10px] font-black uppercase shadow-2xl active:scale-95 transition-all">Accept Duty</button>
-               </div>
-            </div>
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar pb-32">
+         
+         {/* Status Filters */}
+         <div className="flex gap-3 overflow-x-auto hide-scrollbar py-2">
+            {[OrderStatus.PENDING, OrderStatus.ON_WAY, OrderStatus.DELIVERED, OrderStatus.CANCELLED].map(status => (
+              <button 
+                key={status}
+                onClick={() => setActiveFilter(status)}
+                className={`flex-shrink-0 px-5 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest border transition-all ${activeFilter === status ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-slate-400 border-slate-100'}`}
+              >
+                {status}
+              </button>
+            ))}
+         </div>
+
+         <div className="space-y-4">
+            {filteredOrders.length === 0 ? (
+              <div className="py-20 text-center">
+                 <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 opacity-50"><Package className="w-8 h-8 text-slate-300" /></div>
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No active cloud orders</p>
+              </div>
+            ) : (
+              filteredOrders.map(order => (
+                <div key={order.id} className="bg-white p-6 rounded-[36px] border border-slate-100 shadow-sm group">
+                   <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                         <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center font-black text-[10px] border">#{order.id.slice(0,3)}</div>
+                         <div>
+                            <h4 className="font-black text-sm text-slate-900">{order.customerName}</h4>
+                            <p className="text-[9px] font-bold text-slate-400 truncate max-w-[150px]">{order.deliveryLocation?.address}</p>
+                         </div>
+                      </div>
+                      <div className="text-right">
+                         <p className="text-sm font-black text-slate-900">₹{order.totalAmount}</p>
+                         <p className="text-[9px] font-black text-slate-300 uppercase mt-1">Gondal Hub</p>
+                      </div>
+                   </div>
+                   <div className="bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-500">
+                        {order.items?.map((i:any) => `${i.qty}x ${i.name}`).join(', ')}
+                      </p>
+                   </div>
+                   <div className="flex gap-2">
+                      {order.status === OrderStatus.PENDING && (
+                        <button onClick={() => updateStatus(order.id, OrderStatus.ON_WAY)} className="flex-1 bg-slate-900 text-white py-4 rounded-2xl text-[10px] font-black uppercase shadow-xl active:scale-95 transition-all">Accept Duty</button>
+                      )}
+                      {order.status === OrderStatus.ON_WAY && (
+                        <button onClick={() => { setTrackingOrder(order); setView('map'); }} className="flex-1 bg-orange-600 text-white py-4 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all">
+                           <Navigation className="w-4 h-4" /> Track Customer
+                        </button>
+                      )}
+                      {order.status === OrderStatus.DELIVERED && (
+                        <div className="flex-1 bg-green-50 text-green-600 py-4 rounded-2xl text-[10px] font-black uppercase text-center border border-green-100 flex items-center justify-center gap-2">
+                           <CheckCircle className="w-4 h-4" /> Order Fulfilled
+                        </div>
+                      )}
+                   </div>
+                </div>
+              ))
+            )}
          </div>
       </div>
 
-      {/* Nav */}
-      <div className="bg-white border-t px-12 py-6 flex justify-between items-center rounded-t-[48px] shadow-2xl sticky bottom-0">
-        <button className="flex flex-col items-center gap-2 text-slate-900">
-          <div className="bg-[#E23744] p-4 rounded-2xl text-white shadow-xl shadow-red-500/20 scale-110"><ListTodo className="w-7 h-7" /></div>
-          <span className="text-[9px] font-black uppercase mt-1">Queue</span>
+      {/* Footer Nav */}
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-[420px] bg-white/80 backdrop-blur-2xl px-12 py-5 flex justify-between items-center z-[100] shadow-2xl rounded-[36px] border">
+        <button className="flex flex-col items-center gap-1.5 text-slate-900">
+           <ListTodo className="w-6 h-6" />
+           <span className="text-[8px] font-black uppercase tracking-widest">Tasks</span>
         </button>
-        <button className="flex flex-col items-center gap-2 text-slate-300"><TrendingUp className="w-7 h-7" /><span className="text-[9px] font-black uppercase">Payouts</span></button>
-        <button className="flex flex-col items-center gap-2 text-slate-300"><User className="w-7 h-7" /><span className="text-[9px] font-black uppercase">Profile</span></button>
+        <button className="flex flex-col items-center gap-1.5 text-slate-300">
+           <TrendingUp className="w-6 h-6" />
+           <span className="text-[8px] font-black uppercase tracking-widest">Fleet</span>
+        </button>
+        <button className="flex flex-col items-center gap-1.5 text-slate-300">
+           <User className="w-6 h-6" />
+           <span className="text-[8px] font-black uppercase tracking-widest">Profile</span>
+        </button>
       </div>
-
-      {/* Navigation Overlay */}
-      {view === 'map' && (
-        <div className="fixed inset-0 z-[1000] bg-white animate-in slide-in-from-bottom duration-500 flex flex-col">
-          <div className="flex-1 bg-slate-200 relative">
-             <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/navigation-day-v1/static/-118.245,34.055,14,0/600x600?access_token=pk.eyJ1IjoibW9ja3VzZXIiLCJhIjoiY2p4eCJ9')] bg-cover" />
-             <div className="absolute top-12 left-6 right-6 bg-slate-900 p-8 rounded-[40px] text-white flex items-center gap-6 shadow-2xl">
-                <Navigation className="w-14 h-14 text-orange-500 animate-pulse" />
-                <div>
-                   <h3 className="font-black text-xl">Head North</h3>
-                   <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black">200m to Dreamland Hotel</p>
-                </div>
-             </div>
-          </div>
-          <div className="h-[35%] bg-white rounded-t-[56px] p-12 -mt-16 relative z-10 shadow-2xl">
-             <div className="flex justify-between items-center mb-12">
-                <div>
-                   <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Vendor Contact</p>
-                   <h2 className="text-3xl font-black text-slate-900">Dreamland Hub</h2>
-                </div>
-                <div className="flex gap-4">
-                   <button className="bg-slate-50 p-6 rounded-3xl border shadow-sm text-slate-600"><Phone className="w-8 h-8" /></button>
-                </div>
-             </div>
-             <button onClick={() => setView('dashboard')} className="w-full bg-green-600 text-white py-7 rounded-[32px] font-black text-sm uppercase shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4">
-                <CheckCircle2 className="w-7 h-7" /> I HAVE PICKED UP ORDER
-             </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

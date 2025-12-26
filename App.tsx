@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserRole, AppState } from './types.ts';
 import CustomerApp from './screens/CustomerApp.tsx';
 import RestaurantApp from './screens/RestaurantApp.tsx';
@@ -6,6 +6,15 @@ import DeliveryApp from './screens/DeliveryApp.tsx';
 import AdminPanel from './screens/AdminPanel.tsx';
 import DesignDocs from './screens/DesignDocs.tsx';
 import { Smartphone, ChevronRight, ArrowLeft, ShieldCheck, Lock, CheckCircle2, Loader2, Info, BookOpen } from 'lucide-react';
+import { 
+  RecaptchaVerifier, 
+  signInWithPhoneNumber, 
+  onAuthStateChanged, 
+  ConfirmationResult,
+  signOut
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from './firebase.ts';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>({
@@ -22,34 +31,100 @@ const App: React.FC = () => {
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
-  const handlePhoneSubmit = (e: React.FormEvent) => {
+  // Persistence and Role Check
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setAppState(prev => ({ 
+            ...prev, 
+            isLoggedIn: true, 
+            role: userData.role, 
+            phoneNumber: user.phoneNumber || '' 
+          }));
+        } else {
+          setAuthStep('role');
+        }
+      } else {
+        setAppState(prev => ({ ...prev, isLoggedIn: false }));
+        setAuthStep('phone');
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const setupRecaptcha = () => {
+    if (!(window as any).recaptchaVerifier) {
+      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+      });
+    }
+  };
+
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (phone.length < 10) return;
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      setupRecaptcha();
+      const appVerifier = (window as any).recaptchaVerifier;
+      const formatPhone = `+91${phone}`;
+      const confirmation = await signInWithPhoneNumber(auth, formatPhone, appVerifier);
+      setConfirmationResult(confirmation);
       setAuthStep('otp');
-    }, 1500);
+    } catch (error) {
+      console.error("SMS Error:", error);
+      alert("Error sending SMS. Check console.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleOtpSubmit = (e: React.FormEvent) => {
+  const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp.length < 4) return;
+    if (!confirmationResult || otp.length < 6) return;
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      if (phone === '9999999999' && otp === '1234') {
-        setAppState(prev => ({ ...prev, role: UserRole.ADMIN, isLoggedIn: true, phoneNumber: phone }));
+    try {
+      const result = await confirmationResult.confirm(otp);
+      const user = result.user;
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setAppState(prev => ({ ...prev, role: userData.role, isLoggedIn: true, phoneNumber: user.phoneNumber || '' }));
       } else {
         setAuthStep('role');
       }
-    }, 1500);
+    } catch (error) {
+      console.error("OTP Error:", error);
+      alert("Invalid Code");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const selectRoleAndLogin = (role: UserRole) => {
-    setAppState(prev => ({ ...prev, role: role, isLoggedIn: true, phoneNumber: phone }));
+  const selectRoleAndLogin = async (role: UserRole) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      await setDoc(doc(db, 'users', user.uid), {
+        role,
+        phoneNumber: user.phoneNumber,
+        createdAt: Date.now()
+      });
+      setAppState(prev => ({ ...prev, role: role, isLoggedIn: true, phoneNumber: user.phoneNumber || '' }));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const logout = () => signOut(auth);
 
   const renderApp = () => {
     switch (appState.role) {
@@ -72,6 +147,7 @@ const App: React.FC = () => {
   if (!appState.isLoggedIn) {
     return (
       <div className="min-h-screen bg-[#F4F4F4] flex flex-col items-center justify-center p-4 font-['Plus_Jakarta_Sans']">
+        <div id="recaptcha-container"></div>
         <div className="w-full max-w-[420px] bg-white rounded-[48px] p-10 shadow-2xl relative min-h-[700px] flex flex-col overflow-hidden">
           
           <button onClick={() => setShowDocs(true)} className="absolute top-8 right-8 flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
@@ -83,7 +159,7 @@ const App: React.FC = () => {
               <Smartphone className="w-12 h-12 text-white" />
             </div>
             <h1 className="text-5xl font-black text-slate-900 tracking-tighter">FoodGo</h1>
-            <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3 opacity-60">Mobile Delivery Ecosystem</p>
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3 opacity-60">Firebase Powered Ecosystem</p>
           </div>
 
           <div className="flex-1">
@@ -107,10 +183,6 @@ const App: React.FC = () => {
                     required
                   />
                 </div>
-                <div className="bg-blue-50 p-5 rounded-[28px] flex gap-4 border border-blue-100 shadow-sm">
-                   <Info className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                   <p className="text-[10px] font-black text-blue-600 leading-relaxed uppercase">Sandbox Active: <br/>Use any 10-digit number. real sms cost avoided.</p>
-                </div>
                 <button 
                   type="submit"
                   disabled={phone.length < 10 || isLoading}
@@ -128,24 +200,23 @@ const App: React.FC = () => {
                     <ArrowLeft className="w-5 h-5" /> Change Number
                   </button>
                   <h2 className="text-3xl font-black text-slate-900 tracking-tight">Security Code</h2>
-                  <p className="text-sm text-slate-400 font-medium">Enter the 4-digit code sent to you</p>
+                  <p className="text-sm text-slate-400 font-medium">Enter the 6-digit code sent to you</p>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-6 top-1/2 -translate-y-1/2 w-7 h-7 text-slate-300" />
                   <input 
                     type="text" 
-                    maxLength={4}
+                    maxLength={6}
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                    className="w-full bg-slate-50 border-2 border-transparent focus:border-red-500/10 focus:bg-white rounded-[32px] py-7 pl-16 pr-8 outline-none transition-all font-black text-3xl tracking-[0.8em] text-center"
-                    placeholder="0000"
+                    className="w-full bg-slate-50 border-2 border-transparent focus:border-red-500/10 focus:bg-white rounded-[32px] py-7 pl-16 pr-8 outline-none transition-all font-black text-3xl tracking-[0.4em] text-center"
+                    placeholder="000000"
                     required
                   />
                 </div>
-                <p className="text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">Simulation Key: 1234</p>
                 <button 
                   type="submit"
-                  disabled={otp.length < 4 || isLoading}
+                  disabled={otp.length < 6 || isLoading}
                   className="w-full bg-slate-900 text-white py-6 rounded-[32px] font-black text-sm uppercase tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3"
                 >
                   {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Confirm & Enter <ShieldCheck className="w-5 h-5" /></>}
@@ -183,7 +254,6 @@ const App: React.FC = () => {
               </div>
             )}
           </div>
-          <p className="mt-12 text-center text-[9px] font-black text-slate-200 uppercase tracking-[0.4em]">Designed for High-Load Environments</p>
         </div>
       </div>
     );
@@ -194,7 +264,7 @@ const App: React.FC = () => {
       <div className="w-full max-w-[480px] h-screen bg-white shadow-[0_0_80px_rgba(0,0,0,0.08)] relative flex flex-col overflow-hidden sm:rounded-[48px] sm:h-[calc(100vh-64px)]">
         {renderApp()}
         <button 
-          onClick={() => setAppState(p => ({ ...p, isLoggedIn: false }))}
+          onClick={logout}
           className="absolute top-6 right-6 z-[9999] bg-white/90 backdrop-blur-md p-4 rounded-3xl shadow-lg border border-slate-100 opacity-20 hover:opacity-100 transition-opacity"
         >
           <ArrowLeft className="w-6 h-6 text-slate-400" />

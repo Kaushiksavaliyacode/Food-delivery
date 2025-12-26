@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X, BookOpen, Database, Globe, CheckCircle, Navigation, Zap, ListChecks, Server, Map, Lock, MapPin } from 'lucide-react';
+import { X, BookOpen, Database, Globe, CheckCircle, Navigation, Zap, ListChecks, Server, Map, Lock, MapPin, Code, Layers } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
@@ -8,110 +8,124 @@ interface Props {
 
 const DesignDocs: React.FC<Props> = ({ onClose }) => {
   return (
-    <div className="flex flex-col h-full bg-white overflow-y-auto">
-      <div className="p-8 border-b sticky top-0 bg-white z-50 flex justify-between items-center">
+    <div className="flex flex-col h-full bg-white overflow-y-auto font-['Plus_Jakarta_Sans']">
+      <div className="p-8 border-b sticky top-0 bg-white z-50 flex justify-between items-center shadow-sm">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">FoodGo Specs</h1>
-          <p className="text-xs font-black text-[#E23744] uppercase tracking-widest mt-1">Free Tier Strategy v1.1</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">System Architecture</h1>
+          <p className="text-xs font-black text-[#E23744] uppercase tracking-widest mt-1">Production Blueprint v1.0</p>
         </div>
-        <button onClick={onClose} className="p-3 bg-slate-50 rounded-full hover:bg-slate-100 transition shadow-sm"><X className="w-6 h-6" /></button>
+        <button onClick={onClose} className="p-4 bg-slate-50 rounded-full hover:bg-slate-100 transition shadow-sm"><X className="w-6 h-6" /></button>
       </div>
 
-      <div className="p-8 space-y-12 pb-32">
-        {/* FREE APIs Guide */}
+      <div className="p-8 space-y-16 pb-40">
+        {/* Tech Stack */}
         <section>
-          <h2 className="text-xl font-black mb-6 flex items-center gap-3"><Globe className="text-blue-500" /> 100% Free Service Stack</h2>
-          <div className="space-y-6">
-             <div className="bg-blue-50 p-6 rounded-[32px] border border-blue-100">
-                <h4 className="font-black text-blue-900 text-sm uppercase mb-3 flex items-center gap-2">
-                   <MapPin className="w-4 h-4" /> Free Location (OpenStreetMap)
-                </h4>
-                <p className="text-xs text-blue-700 leading-loose font-medium mb-4">Instead of Google Maps ($$$), we use OpenStreetMap's Nominatim API. It requires NO API KEY.</p>
-                <div className="space-y-2 font-mono text-[9px] text-blue-800 break-all">
-                   {/* Fix: Replaced undefined variable placeholders {lat}, {lon}, {query} with string representations to resolve build errors */}
-                   <p className="bg-white/50 p-2 rounded-lg border">Reverse Geo: https://nominatim.openstreetmap.org/reverse?format=json&lat=[lat]&lon=[lon]</p>
-                   <p className="bg-white/50 p-2 rounded-lg border">Search: https://nominatim.openstreetmap.org/search?format=json&q=[query]</p>
-                </div>
-             </div>
-
-             <div className="bg-orange-50 p-6 rounded-[32px] border border-orange-100">
-                <h4 className="font-black text-orange-900 text-sm uppercase mb-3 flex items-center gap-2">
-                   <Lock className="w-4 h-4" /> Free OTP (Firebase Auth)
-                </h4>
-                <p className="text-xs text-orange-700 leading-loose font-medium">Firebase provides 10,000 free Phone Verifications/month for most regions. This is the industry standard for starting free.</p>
-                <ul className="mt-4 space-y-2 text-[10px] font-bold text-orange-800 uppercase list-disc ml-5">
-                   <li>Native SDK integration</li>
-                   <li>Built-in reCAPTCHA for spam</li>
-                   <li>Zero upfront server cost</li>
-                </ul>
-             </div>
+          <h2 className="text-xl font-black mb-8 flex items-center gap-4"><Layers className="text-blue-500" /> Technology Stack</h2>
+          <div className="grid grid-cols-2 gap-4">
+             {[
+               { title: 'Frontend', desc: 'React 19 / Tailwind / Lucide' },
+               { title: 'Backend', desc: 'Node.js / Express' },
+               { title: 'Realtime', desc: 'Socket.io (WebSockets)' },
+               { title: 'Database', desc: 'MongoDB Atlas' },
+               { title: 'Auth', desc: 'Firebase Auth (OTP)' },
+               { title: 'Maps', desc: 'Nominatim / Leaflet' }
+             ].map((item, i) => (
+               <div key={i} className="bg-slate-50 p-6 rounded-[32px] border">
+                  <h4 className="font-black text-xs text-slate-400 uppercase tracking-widest mb-1">{item.title}</h4>
+                  <p className="text-sm font-black text-slate-900">{item.desc}</p>
+               </div>
+             ))}
           </div>
         </section>
 
-        {/* Core Architecture */}
+        {/* API Structure */}
         <section>
-          <h2 className="text-xl font-black mb-6 flex items-center gap-3"><Server className="text-slate-900" /> Backend Infrastructure</h2>
-          <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 space-y-6">
-             <div>
-                <h4 className="font-black text-slate-900 text-sm uppercase mb-3">API Endpoints (RESTful)</h4>
-                <div className="space-y-2 font-mono text-[10px] text-slate-500">
-                   <p className="bg-white p-2 rounded-lg border">POST /auth/login - OTP initiation</p>
-                   <p className="bg-white p-2 rounded-lg border">POST /auth/verify - JWT issue</p>
-                   <p className="bg-white p-2 rounded-lg border">GET /restaurants - Geo-filtered listing</p>
-                   <p className="bg-white p-2 rounded-lg border">POST /orders/place - Transaction orchestration</p>
-                </div>
+          <h2 className="text-xl font-black mb-8 flex items-center gap-4"><Code className="text-green-500" /> Backend API Structure</h2>
+          <div className="bg-slate-900 rounded-[32px] p-8 text-slate-400 font-mono text-xs space-y-4">
+             <div className="pb-4 border-b border-slate-800">
+                <span className="text-blue-400">POST</span> /api/v1/auth/otp-send <span className="text-slate-600">// Init login</span>
+             </div>
+             <div className="pb-4 border-b border-slate-800">
+                <span className="text-blue-400">POST</span> /api/v1/orders/place <span className="text-slate-600">// Transaction</span>
+             </div>
+             <div className="pb-4 border-b border-slate-800">
+                <span className="text-green-400">GET</span> /api/v1/restaurants/nearby <span className="text-slate-600">// Geo-spatial query</span>
+             </div>
+             <div className="pb-4 border-b border-slate-800">
+                <span className="text-yellow-400">PATCH</span> /api/v1/rider/location <span className="text-slate-600">// Tracking update</span>
              </div>
           </div>
         </section>
 
         {/* Database Schema */}
         <section>
-          <h2 className="text-xl font-black mb-6 flex items-center gap-3"><Database className="text-purple-500" /> Database Schema (MongoDB)</h2>
-          <div className="bg-slate-900 rounded-[32px] p-6 text-slate-400 font-mono text-[11px] overflow-x-auto shadow-2xl">
-            <pre className="whitespace-pre">
-{`// User Profile
-{
-  _id: ObjectId,
-  phone: String,
-  addresses: [{ 
-    label: 'Home' | 'Work', 
-    coord: Point,
-    raw: String 
-  }],
-  role: Enum
-}
-
-// Order State
-{
-  _id: ObjectId,
-  customerId: ObjectId,
-  status: 'PREPARING' | 'PICKED_UP'...,
-  payment: { method: 'UPI', status: 'SUCCESS' }
+          <h2 className="text-xl font-black mb-8 flex items-center gap-4"><Database className="text-purple-500" /> Database Schema (Mongoose)</h2>
+          <div className="bg-slate-50 rounded-[40px] p-10 border border-slate-200">
+             <div className="space-y-8">
+                <div>
+                   <h4 className="font-black text-slate-900 text-sm mb-4 uppercase">Order Model</h4>
+                   <pre className="text-[10px] bg-white p-6 rounded-3xl border text-slate-600 leading-relaxed">
+{`{
+  customerId: { type: ObjectId, ref: 'User' },
+  items: [{ itemId: ObjectId, qty: Number }],
+  status: { type: String, enum: OrderStatus },
+  payment: { status: String, txId: String },
+  deliveryLoc: { type: Point, coordinates: [Number] }
 }`}
-            </pre>
+                   </pre>
+                </div>
+                <div>
+                   <h4 className="font-black text-slate-900 text-sm mb-4 uppercase">Rider Tracker</h4>
+                   <pre className="text-[10px] bg-white p-6 rounded-3xl border text-slate-600 leading-relaxed">
+{`{
+  riderId: ObjectId,
+  currentPos: { type: Point, index: '2dsphere' },
+  activeTask: ObjectId,
+  isOnline: Boolean
+}`}
+                   </pre>
+                </div>
+             </div>
+          </div>
+        </section>
+
+        {/* Real-time Tracking Logic */}
+        <section>
+          <h2 className="text-xl font-black mb-8 flex items-center gap-4"><Navigation className="text-red-500" /> Tracking Logic</h2>
+          <div className="p-8 bg-red-50 rounded-[40px] border border-red-100">
+             <ul className="space-y-6">
+                <li className="flex gap-4">
+                   <Zap className="w-5 h-5 text-red-500 flex-shrink-0" />
+                   <p className="text-xs text-red-700 font-medium leading-loose">Rider client emits <code className="bg-white px-2 py-0.5 rounded border">location_update</code> every 5s via Socket.io.</p>
+                </li>
+                <li className="flex gap-4">
+                   <Zap className="w-5 h-5 text-red-500 flex-shrink-0" />
+                   <p className="text-xs text-red-700 font-medium leading-loose">Server calculates ETA using Haversine formula + average urban speed coefficients.</p>
+                </li>
+                <li className="flex gap-4">
+                   <Zap className="w-5 h-5 text-red-500 flex-shrink-0" />
+                   <p className="text-xs text-red-700 font-medium leading-loose">Customer client listens to room <code className="bg-white px-2 py-0.5 rounded border">order_[ID]</code> for seamless map movement.</p>
+                </li>
+             </ul>
           </div>
         </section>
 
         {/* Launch Checklist */}
         <section>
-          <h2 className="text-xl font-black mb-6 flex items-center gap-3"><ListChecks className="text-orange-500" /> 0-Cost Launch Checklist</h2>
+          <h2 className="text-xl font-black mb-8 flex items-center gap-4"><ListChecks className="text-green-600" /> Production Checklist</h2>
           <div className="space-y-4">
-            {[
-              { task: "Setup Firebase Phone Auth (Free Tier)", status: "Ready" },
-              { task: "Implement Nominatim API with Rate Limiting", status: "Ready" },
-              { task: "Connect Socket.io on Free Tier Heroku/Railway", status: "In Progress" },
-              { task: "UI Optimization for One-Hand Usage", status: "Ready" }
-            ].map((check, i) => (
-              <div key={i} className="flex items-center gap-4 p-5 bg-slate-50 rounded-3xl border border-slate-100">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${check.status === 'Ready' ? 'bg-green-500' : 'bg-slate-300'}`}>
-                   <CheckCircle className="w-5 h-5" />
-                </div>
-                <div className="flex-1">
-                   <h4 className="text-sm font-black text-slate-900">{check.task}</h4>
-                   <p className={`text-[10px] font-black uppercase tracking-widest ${check.status === 'Ready' ? 'text-green-500' : 'text-slate-400'}`}>{check.status}</p>
-                </div>
-              </div>
-            ))}
+             {[
+               { task: 'Enable CORS for Merchant Domains', status: 'Ready' },
+               { task: 'Configure MongoDB TTL Index for Sessions', status: 'Pending' },
+               { task: 'CDN Implementation for Food Imagery', status: 'Ready' },
+               { task: 'SSL Certificate for API Endpoints', status: 'Ready' },
+               { task: 'Rate Limiting for SMS Gateway Calls', status: 'Ready' }
+             ].map((item, i) => (
+               <div key={i} className="flex items-center justify-between p-6 bg-slate-50 rounded-[32px] border border-slate-100">
+                  <span className="text-sm font-black text-slate-900">{item.task}</span>
+                  <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${item.status === 'Ready' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>{item.status}</div>
+               </div>
+             ))}
           </div>
         </section>
       </div>

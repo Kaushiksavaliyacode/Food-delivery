@@ -67,7 +67,8 @@ const AdminPanel: React.FC = () => {
            ].map((stat, idx) => (
              <div key={idx} className="bg-white p-7 rounded-[40px] border border-slate-100 shadow-xl group hover:border-slate-900 transition-all cursor-pointer">
                 <div className={`${stat.color} w-12 h-12 rounded-[18px] flex items-center justify-center text-white mb-6 shadow-2xl shadow-slate-900/10 transition-transform group-hover:rotate-12`}>
-                   {React.cloneElement(stat.icon as React.ReactElement, { className: "w-6 h-6" })}
+                   {/* Cast to any to allow className prop injection via cloneElement */}
+                   {React.cloneElement(stat.icon as React.ReactElement<any>, { className: "w-6 h-6" })}
                 </div>
                 <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">{stat.label}</p>
                 <div className="flex items-end justify-between">

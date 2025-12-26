@@ -1,6 +1,6 @@
 {
-  "name": "Gondal Delivery Service",
-  "description": "Fast and reliable local delivery service for Gondal and surrounding areas.",
+  "name": "FoodGo - Next Gen Delivery Ecosystem",
+  "description": "A comprehensive multi-role food delivery platform for customers, restaurants, and delivery partners.",
   "requestFramePermissions": [
     "geolocation",
     "camera",

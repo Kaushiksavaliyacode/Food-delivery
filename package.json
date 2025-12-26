@@ -1,5 +1,5 @@
 {
-  "name": "gondal-delivery-service",
+  "name": "foodgo---next-gen-delivery-ecosystem",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,8 +11,8 @@
   "dependencies": {
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "recharts": "3.6.0",
     "lucide-react": "0.475.0",
+    "recharts": "3.6.0",
     "firebase": "^12.7.0"
   },
   "devDependencies": {

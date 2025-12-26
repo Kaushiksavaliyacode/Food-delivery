@@ -26,7 +26,7 @@ const DesignDocs: React.FC<Props> = ({ onClose }) => {
                { title: 'Backend', desc: 'Node.js / Express' },
                { title: 'Realtime', desc: 'Socket.io (WebSockets)' },
                { title: 'Database', desc: 'MongoDB Atlas' },
-               { title: 'Auth', desc: 'Firebase Auth (OTP)' },
+               { title: 'Auth', desc: 'Custom OTP Simulation' },
                { title: 'Maps', desc: 'Nominatim / Leaflet' }
              ].map((item, i) => (
                <div key={i} className="bg-slate-50 p-6 rounded-[32px] border">

@@ -6,7 +6,6 @@ import DeliveryApp from './screens/DeliveryApp.tsx';
 import AdminPanel from './screens/AdminPanel.tsx';
 import DesignDocs from './screens/DesignDocs.tsx';
 import { Smartphone, ChevronRight, ArrowLeft, ShieldCheck, Lock, CheckCircle2, Loader2, Info, BookOpen } from 'lucide-react';
-import './firebase.ts';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>({

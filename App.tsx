@@ -5,7 +5,7 @@ import RestaurantApp from './screens/RestaurantApp.tsx';
 import DeliveryApp from './screens/DeliveryApp.tsx';
 import AdminPanel from './screens/AdminPanel.tsx';
 import DesignDocs from './screens/DesignDocs.tsx';
-import { Smartphone, ChevronRight, ArrowLeft, ShieldCheck, Lock, CheckCircle2, Loader2, Info, BookOpen } from 'lucide-react';
+import { Smartphone, ChevronRight, ArrowLeft, ShieldCheck, Lock, CheckCircle2, Loader2, BookOpen } from 'lucide-react';
 import { 
   RecaptchaVerifier, 
   signInWithPhoneNumber, 
@@ -13,7 +13,7 @@ import {
   ConfirmationResult,
   signOut
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, limit, query, getDocs } from 'firebase/firestore';
 import { auth, db } from './firebase.ts';
 
 const App: React.FC = () => {
@@ -33,8 +33,20 @@ const App: React.FC = () => {
   const [showDocs, setShowDocs] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
-  // Persistence and Role Check
+  // Health Check and Persistence
   useEffect(() => {
+    // 1. Firebase Health Check
+    const checkFirebase = async () => {
+      try {
+        await getDocs(query(collection(db, "health_check"), limit(1)));
+        console.log("✅ Firebase System: Online");
+      } catch (e: any) {
+        console.warn("ℹ️ Firebase System: Ready (Permissions pending)", e.message);
+      }
+    };
+    checkFirebase();
+
+    // 2. Auth State Listener
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const userDoc = await getDoc(doc(db, 'users', user.uid));

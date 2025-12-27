@@ -1,40 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Navigation, CheckCircle2, DollarSign, ListTodo, User, ShieldCheck, 
   Camera, Phone, MapPin, ChevronRight, Zap, History, TrendingUp,
   MessageSquare, Star, ArrowLeft, Loader2, Play
 } from 'lucide-react';
-import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase.ts';
 import { Order, OrderStatus } from '../types.ts';
 
-const DeliveryApp: React.FC = () => {
+interface Props {
+    orders: Order[];
+    setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
+}
+
+const DeliveryApp: React.FC<Props> = ({ orders, setOrders }) => {
   const [view, setView] = useState<'kyc' | 'dashboard' | 'task'>('dashboard');
   const [isOnline, setIsOnline] = useState(true);
-  const [tasks, setTasks] = useState<Order[]>([]);
 
-  useEffect(() => {
-    // Listen for orders ready for pickup
-    const q = query(collection(db, 'orders'), where('status', '==', OrderStatus.READY_FOR_PICKUP));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      setTasks(orders);
-    });
-    return () => unsubscribe();
-  }, []);
+  const availableTasks = orders.filter(o => o.status === OrderStatus.READY_FOR_PICKUP);
 
-  const acceptTask = async (orderId: string) => {
-    const user = auth.currentUser;
-    if (!user) return;
-    try {
-      await updateDoc(doc(db, 'orders', orderId), { 
-        riderId: user.uid, 
-        status: OrderStatus.PICKED_UP 
-      });
-      setView('task');
-    } catch (e) {
-      console.error(e);
-    }
+  const acceptTask = (orderId: string) => {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: OrderStatus.PICKED_UP } : o));
+    setView('task');
   };
 
   return (
@@ -48,14 +33,14 @@ const DeliveryApp: React.FC = () => {
       </div>
 
       <div className="flex-1 p-10 pt-20 space-y-8 overflow-y-auto">
-         {tasks.length > 0 ? (
+         {availableTasks.length > 0 ? (
            <div className="space-y-4">
               <h3 className="text-2xl font-black text-slate-900">New Opportunities</h3>
-              {tasks.map(task => (
+              {availableTasks.map(task => (
                 <div key={task.id} className="bg-white rounded-[32px] p-8 shadow-xl border">
                    <div className="flex justify-between items-center mb-6">
                       <span className="bg-orange-600 text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase">₹85 Pickup</span>
-                      <p className="text-[10px] text-slate-300 font-black uppercase">Order #{task.id.slice(-4).toUpperCase()}</p>
+                      <p className="text-[10px] text-slate-300 font-black uppercase">Order {task.id}</p>
                    </div>
                    <h4 className="font-black text-lg mb-8">Dreamland Hotel</h4>
                    <button onClick={() => acceptTask(task.id)} className="w-full bg-slate-900 text-white py-5 rounded-[24px] font-black uppercase text-xs">Accept Duty</button>

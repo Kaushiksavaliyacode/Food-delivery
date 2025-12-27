@@ -1,19 +1,38 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import * as firebaseAnalytics from "firebase/analytics";
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCC1R7dUSCAxG1FktvfbVdEPiOvCW0-n5w",
-  authDomain: "food-delivery-4c66d.firebaseapp.com",
-  projectId: "food-delivery-4c66d",
-  storageBucket: "food-delivery-4c66d.firebasestorage.app",
-  messagingSenderId: "985390911424",
-  appId: "1:985390911424:web:944c2b17983fa1820b4225",
-  measurementId: "G-DT7240YMGD"
+  apiKey: "AIzaSyDi8kzDtNwuQrdPG7L8n53U-0mK4aQx5fc",
+  authDomain: "food-delivery-3fa78.firebaseapp.com",
+  projectId: "food-delivery-3fa78",
+  storageBucket: "food-delivery-3fa78.firebasestorage.app",
+  messagingSenderId: "1046284268128",
+  appId: "1:1046284268128:web:17a1b61ca2d5baa21b8905",
+  measurementId: "G-9TKQLQ510K"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-export const db = getFirestore(app);
-export const auth = getAuth(app);
+// Safe Analytics initialization to prevent "Component analytics has not been registered" error
+export let analytics: any = null;
+
+if (typeof window !== 'undefined') {
+  // Fix: Using wildcard import and cast to any to bypass "no exported member" errors 
+  // which occur in some TypeScript environments when resolving modular Firebase sub-packages.
+  const analyticsLib = firebaseAnalytics as any;
+  
+  if (analyticsLib && typeof analyticsLib.isSupported === 'function') {
+    analyticsLib.isSupported().then((supported: boolean) => {
+      if (supported && typeof analyticsLib.getAnalytics === 'function') {
+        analytics = analyticsLib.getAnalytics(app);
+        console.log("Firebase Analytics: Initialized");
+      }
+    }).catch((err: any) => {
+      console.warn("Firebase Analytics: Not supported in this environment", err);
+    });
+  }
+}
+
 export default app;

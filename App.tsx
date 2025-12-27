@@ -1,22 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { UserRole, AppState } from './types.ts';
+import { UserRole, AppState, Order, OrderStatus } from './types.ts';
 import CustomerApp from './screens/CustomerApp.tsx';
 import RestaurantApp from './screens/RestaurantApp.tsx';
 import DeliveryApp from './screens/DeliveryApp.tsx';
 import AdminPanel from './screens/AdminPanel.tsx';
 import DesignDocs from './screens/DesignDocs.tsx';
 import { Smartphone, ChevronRight, ArrowLeft, ShieldCheck, Lock, CheckCircle2, Loader2, BookOpen } from 'lucide-react';
-import { 
-  RecaptchaVerifier, 
-  signInWithPhoneNumber, 
-  onAuthStateChanged, 
-  ConfirmationResult,
-  signOut
-} from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, limit, query, getDocs } from 'firebase/firestore';
-import { auth, db } from './firebase.ts';
 
 const App: React.FC = () => {
+  // Global Local State (Simulating Database)
+  const [orders, setOrders] = useState<Order[]>([]);
   const [appState, setAppState] = useState<AppState>({
     role: UserRole.CUSTOMER,
     currentLocation: null,
@@ -31,120 +24,70 @@ const App: React.FC = () => {
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
-  // Health Check and Persistence
+  // Persistence Simulation
   useEffect(() => {
-    // 1. Firebase Health Check
-    const checkFirebase = async () => {
-      try {
-        await getDocs(query(collection(db, "health_check"), limit(1)));
-        console.log("✅ Firebase System: Online");
-      } catch (e: any) {
-        console.warn("ℹ️ Firebase System: Ready (Permissions pending)", e.message);
-      }
-    };
-    checkFirebase();
-
-    // 2. Auth State Listener
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setAppState(prev => ({ 
-            ...prev, 
-            isLoggedIn: true, 
-            role: userData.role, 
-            phoneNumber: user.phoneNumber || '' 
-          }));
-        } else {
-          setAuthStep('role');
-        }
-      } else {
-        setAppState(prev => ({ ...prev, isLoggedIn: false }));
-        setAuthStep('phone');
-      }
-    });
-    return () => unsubscribe();
+    const savedOrders = localStorage.getItem('foodgo_orders');
+    if (savedOrders) setOrders(JSON.parse(savedOrders));
+    
+    const savedUser = localStorage.getItem('foodgo_user');
+    if (savedUser) {
+      setAppState(JSON.parse(savedUser));
+    }
   }, []);
 
-  const setupRecaptcha = () => {
-    if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-      });
-    }
-  };
+  useEffect(() => {
+    localStorage.setItem('foodgo_orders', JSON.stringify(orders));
+  }, [orders]);
 
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
+  const handlePhoneSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (phone.length < 10) return;
     setIsLoading(true);
-    try {
-      setupRecaptcha();
-      const appVerifier = (window as any).recaptchaVerifier;
-      const formatPhone = `+91${phone}`;
-      const confirmation = await signInWithPhoneNumber(auth, formatPhone, appVerifier);
-      setConfirmationResult(confirmation);
+    // Simulate SMS Network Latency
+    setTimeout(() => {
       setAuthStep('otp');
-    } catch (error) {
-      console.error("SMS Error:", error);
-      alert("Error sending SMS. Check console.");
-    } finally {
       setIsLoading(false);
-    }
+    }, 1000);
   };
 
-  const handleOtpSubmit = async (e: React.FormEvent) => {
+  const handleOtpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!confirmationResult || otp.length < 6) return;
+    if (otp.length < 6) return;
     setIsLoading(true);
-    try {
-      const result = await confirmationResult.confirm(otp);
-      const user = result.user;
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        setAppState(prev => ({ ...prev, role: userData.role, isLoggedIn: true, phoneNumber: user.phoneNumber || '' }));
-      } else {
-        setAuthStep('role');
-      }
-    } catch (error) {
-      console.error("OTP Error:", error);
-      alert("Invalid Code");
-    } finally {
+    // Any 6 digit OTP works in simulation mode
+    setTimeout(() => {
+      setAuthStep('role');
       setIsLoading(false);
-    }
+    }, 800);
   };
 
-  const selectRoleAndLogin = async (role: UserRole) => {
-    const user = auth.currentUser;
-    if (!user) return;
-    setIsLoading(true);
-    try {
-      await setDoc(doc(db, 'users', user.uid), {
-        role,
-        phoneNumber: user.phoneNumber,
-        createdAt: Date.now()
-      });
-      setAppState(prev => ({ ...prev, role: role, isLoggedIn: true, phoneNumber: user.phoneNumber || '' }));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
+  const selectRoleAndLogin = (role: UserRole) => {
+    const newState = { 
+      ...appState, 
+      role, 
+      isLoggedIn: true, 
+      phoneNumber: phone 
+    };
+    setAppState(newState);
+    localStorage.setItem('foodgo_user', JSON.stringify(newState));
   };
 
-  const logout = () => signOut(auth);
+  const logout = () => {
+    localStorage.removeItem('foodgo_user');
+    setAppState(prev => ({ ...prev, isLoggedIn: false }));
+    setAuthStep('phone');
+    setPhone('');
+    setOtp('');
+  };
 
   const renderApp = () => {
     switch (appState.role) {
-      case UserRole.CUSTOMER: return <CustomerApp state={appState} setState={setAppState} />;
-      case UserRole.RESTAURANT: return <RestaurantApp />;
-      case UserRole.DELIVERY: return <DeliveryApp />;
+      case UserRole.CUSTOMER: return <CustomerApp state={appState} setState={setAppState} orders={orders} setOrders={setOrders} />;
+      case UserRole.RESTAURANT: return <RestaurantApp orders={orders} setOrders={setOrders} />;
+      case UserRole.DELIVERY: return <DeliveryApp orders={orders} setOrders={setOrders} />;
       case UserRole.ADMIN: return <AdminPanel />;
-      default: return <CustomerApp state={appState} setState={setAppState} />;
+      default: return <CustomerApp state={appState} setState={setAppState} orders={orders} setOrders={setOrders} />;
     }
   };
 
@@ -159,7 +102,6 @@ const App: React.FC = () => {
   if (!appState.isLoggedIn) {
     return (
       <div className="min-h-screen bg-[#F4F4F4] flex flex-col items-center justify-center p-4 font-['Plus_Jakarta_Sans']">
-        <div id="recaptcha-container"></div>
         <div className="w-full max-w-[420px] bg-white rounded-[48px] p-10 shadow-2xl relative min-h-[700px] flex flex-col overflow-hidden">
           
           <button onClick={() => setShowDocs(true)} className="absolute top-8 right-8 flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
@@ -171,7 +113,7 @@ const App: React.FC = () => {
               <Smartphone className="w-12 h-12 text-white" />
             </div>
             <h1 className="text-5xl font-black text-slate-900 tracking-tighter">FoodGo</h1>
-            <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3 opacity-60">Firebase Powered Ecosystem</p>
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3 opacity-60">Simulation Environment</p>
           </div>
 
           <div className="flex-1">
@@ -179,7 +121,7 @@ const App: React.FC = () => {
               <form onSubmit={handlePhoneSubmit} className="space-y-8 animate-in slide-in-from-bottom duration-500">
                 <div className="space-y-3">
                   <h2 className="text-3xl font-black text-slate-900 tracking-tight">Sign in</h2>
-                  <p className="text-sm text-slate-400 font-medium">Verify your identity via phone number</p>
+                  <p className="text-sm text-slate-400 font-medium">Verify your identity (Mock SMS)</p>
                 </div>
                 <div className="relative">
                   <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3 border-r pr-4 border-slate-200">
@@ -212,7 +154,7 @@ const App: React.FC = () => {
                     <ArrowLeft className="w-5 h-5" /> Change Number
                   </button>
                   <h2 className="text-3xl font-black text-slate-900 tracking-tight">Security Code</h2>
-                  <p className="text-sm text-slate-400 font-medium">Enter the 6-digit code sent to you</p>
+                  <p className="text-sm text-slate-400 font-medium">Enter any 6-digit code</p>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-6 top-1/2 -translate-y-1/2 w-7 h-7 text-slate-300" />

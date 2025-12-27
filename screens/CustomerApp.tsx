@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppState, MenuItem, Location, OrderStatus, Order } from '../types.ts';
 import { CATEGORIES, MOCK_RESTAURANTS } from '../constants.tsx';
 import { 
@@ -7,17 +7,17 @@ import {
   Filter, SlidersHorizontal, Bell, Flame, Map as MapIcon, 
   Home, Briefcase, Wallet, User, Zap, CreditCard as CardIcon, Compass, Loader2, List
 } from 'lucide-react';
-import { collection, addDoc, onSnapshot, query, where, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../firebase.ts';
 
 interface Props {
   state: AppState;
   setState: React.Dispatch<React.SetStateAction<AppState>>;
+  orders: Order[];
+  setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
 }
 
 type CustomerView = 'location' | 'home' | 'itemDetail' | 'cart' | 'checkout' | 'success' | 'tracking' | 'orders';
 
-const CustomerApp: React.FC<Props> = ({ state, setState }) => {
+const CustomerApp: React.FC<Props> = ({ state, setState, orders, setOrders }) => {
   const [view, setView] = useState<CustomerView>(state.currentLocation ? 'home' : 'location');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,65 +25,45 @@ const CustomerApp: React.FC<Props> = ({ state, setState }) => {
   const [quantity, setQuantity] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [riderPos, setRiderPos] = useState({ lat: 34.0550, lng: -118.2450 });
-  const [liveOrders, setLiveOrders] = useState<Order[]>([]);
-
-  // Listen for live orders in Firestore
-  useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    const q = query(collection(db, 'orders'), where('customerId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      setLiveOrders(orders);
-    });
-    return () => unsubscribe();
-  }, []);
 
   const detectLocation = () => {
     setIsDetecting(true);
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
-        const data = await res.json();
+    // Simulate Browser Geolocation
+    setTimeout(() => {
         const loc: Location = { 
-          lat: pos.coords.latitude, 
-          lng: pos.coords.longitude, 
-          address: data.display_name.split(',').slice(0,3).join(','),
+          lat: 34.0522, 
+          lng: -118.2437, 
+          address: "123 Main St, Los Angeles, CA",
           type: 'Home' 
         };
         setState(p => ({ ...p, currentLocation: loc }));
         setView('home');
-      } catch (e) {
-        console.error(e);
-      } finally {
         setIsDetecting(false);
-      }
-    }, () => setIsDetecting(false));
+    }, 1500);
   };
 
-  const placeOrder = async () => {
-    const user = auth.currentUser;
-    if (!user || state.cart.length === 0) return;
+  const placeOrder = () => {
+    if (state.cart.length === 0) return;
     setIsLoading(true);
-    try {
-      await addDoc(collection(db, 'orders'), {
-        customerId: user.uid,
-        restaurantId: 'r1', // Mocking first restaurant
-        items: state.cart,
-        totalAmount: state.cart.reduce((a,b) => a + (b.menuItem.price * b.quantity), 0),
-        status: OrderStatus.PENDING,
-        timestamp: serverTimestamp(),
-        deliveryLocation: state.currentLocation
-      });
-      setState(p => ({ ...p, cart: [] }));
-      setView('success');
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
+    
+    // Simulate Network Roundtrip
+    setTimeout(() => {
+        const newOrder: Order = {
+            id: `ORD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+            customerId: state.phoneNumber || 'anonymous',
+            restaurantId: 'r1',
+            items: [...state.cart],
+            totalAmount: state.cart.reduce((a,b) => a + (b.menuItem.price * b.quantity), 0),
+            status: OrderStatus.PENDING,
+            timestamp: Date.now(),
+            deliveryLocation: state.currentLocation!
+        };
+        
+        setOrders(prev => [newOrder, ...prev]);
+        setState(p => ({ ...p, cart: [] }));
+        setView('success');
+        setIsLoading(false);
+    }, 1000);
   };
 
   const addToCart = (item: MenuItem, q: number) => {
@@ -108,11 +88,10 @@ const CustomerApp: React.FC<Props> = ({ state, setState }) => {
 
   const cartTotal = state.cart.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
 
-  // Sub-Views
-  const LocationPicker = () => (
+  if (view === 'location') return (
     <div className="h-full bg-white flex flex-col animate-in slide-in-from-bottom duration-500">
       <div className="flex-1 bg-slate-100 relative overflow-hidden flex items-center justify-center">
-         <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v10/static/-118.2437,34.0522,13,0/600x600?access_token=pk.eyJ1IjoibW9ja3VzZXIiLCJhIjoiY2p4eCJ9')] bg-cover opacity-30" />
+         <div className="absolute inset-0 bg-slate-200" />
          <div className="relative">
             <div className="absolute -inset-12 bg-red-500/10 rounded-full animate-ping" />
             <MapPin className="w-20 h-20 text-[#E23744] drop-shadow-2xl relative z-10" />
@@ -132,12 +111,8 @@ const CustomerApp: React.FC<Props> = ({ state, setState }) => {
     </div>
   );
 
-  if (view === 'location') return <LocationPicker />;
-
   return (
     <div className="h-full bg-white flex flex-col relative overflow-hidden font-['Plus_Jakarta_Sans']">
-      
-      {/* Dynamic Header */}
       <div className="px-6 pt-12 pb-4 sticky top-0 bg-white/80 backdrop-blur-xl z-40 border-b border-slate-50">
         <div className="flex items-center justify-between mb-6">
            <button onClick={() => setView('location')} className="flex items-center gap-2 max-w-[70%] text-left">
@@ -185,10 +160,10 @@ const CustomerApp: React.FC<Props> = ({ state, setState }) => {
           <div className="px-6 py-8 space-y-8 animate-in slide-in-from-right duration-500">
              <h2 className="text-2xl font-black text-slate-900">Your Orders</h2>
              <div className="space-y-4">
-                {liveOrders.map(order => (
+                {orders.filter(o => o.customerId === state.phoneNumber).map(order => (
                   <div key={order.id} className="bg-white rounded-[32px] p-6 border shadow-sm relative overflow-hidden">
                      <div className="flex justify-between items-start mb-4">
-                        <h4 className="font-black text-slate-900 text-sm">{order.id.slice(-6).toUpperCase()}</h4>
+                        <h4 className="font-black text-slate-900 text-sm">{order.id}</h4>
                         <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase ${order.status === 'DELIVERED' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
                           {order.status}
                         </span>
@@ -196,6 +171,9 @@ const CustomerApp: React.FC<Props> = ({ state, setState }) => {
                      <p className="text-sm font-black text-slate-900">₹{order.totalAmount.toFixed(2)}</p>
                   </div>
                 ))}
+                {orders.filter(o => o.customerId === state.phoneNumber).length === 0 && (
+                    <div className="text-center py-20 opacity-30 font-black uppercase text-xs">No active orders</div>
+                )}
              </div>
           </div>
         )}

@@ -14,10 +14,10 @@ export const Card: React.FC<CardProps> = ({ children, className = '', onClick, h
     <div 
       onClick={onClick}
       className={`
-        relative overflow-hidden rounded-[40px] border border-slate-50 bg-white shadow-sm transition-all duration-300
-        ${hoverable ? 'hover:shadow-xl hover:border-slate-100 hover:-translate-y-1' : ''}
-        ${glass ? 'bg-white/80 backdrop-blur-xl border-white/40' : ''}
-        ${onClick ? 'cursor-pointer' : ''}
+        relative overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-sm transition-all duration-300
+        ${hoverable ? 'hover:shadow-md' : ''}
+        ${glass ? 'bg-white/80 backdrop-blur-xl' : ''}
+        ${onClick ? 'cursor-pointer active:scale-98' : ''}
         ${className}
       `}
     >
@@ -27,13 +27,13 @@ export const Card: React.FC<CardProps> = ({ children, className = '', onClick, h
 };
 
 export const CardHeader: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <div className={`p-6 pb-0 ${className}`}>{children}</div>
+  <div className={`p-4 pb-0 ${className}`}>{children}</div>
 );
 
 export const CardContent: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <div className={`p-6 ${className}`}>{children}</div>
+  <div className={`p-4 ${className}`}>{children}</div>
 );
 
 export const CardFooter: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <div className={`p-6 pt-0 mt-auto border-t border-slate-50 ${className}`}>{children}</div>
+  <div className={`p-4 pt-0 mt-auto border-t border-slate-50 ${className}`}>{children}</div>
 );

@@ -19,6 +19,7 @@ export interface MenuItem {
 }
 
 export interface Location {
+  id: string;
   lat: number;
   lng: number;
   address: string;
@@ -76,4 +77,6 @@ export interface AppState {
   activeOrder: Order | null;
   isLoggedIn: boolean;
   phoneNumber?: string;
+  favorites: string[]; // Restaurant IDs
+  language: 'en' | 'gu';
 }

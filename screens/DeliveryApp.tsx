@@ -1,14 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Navigation, CheckCircle2, DollarSign, ListTodo, User, ShieldCheck, 
-  Camera, Phone, MapPin, ChevronRight, Zap, History, TrendingUp,
-  MessageSquare, Star, ArrowLeft, Loader2, Play, Package, 
-  Clock, CheckCircle, XCircle, Map as MapIcon, Info
+  MapPin, ChevronRight, Zap, History, Bike, 
+  Package, Clock, XCircle, Info, Bell,
+  Phone, MessageSquare, ArrowLeft
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types.ts';
-import Button from '../components/ui/Button.tsx';
 import Badge from '../components/ui/Badge.tsx';
+import { supabase } from '../supabase.ts';
 
 interface Props {
     orders: Order[];
@@ -16,119 +16,175 @@ interface Props {
 }
 
 const DeliveryApp: React.FC<Props> = ({ orders, setOrders }) => {
-  const [view, setView] = useState<'dashboard' | 'task' | 'history' | 'profile'>('dashboard');
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [view, setView] = useState<'duty' | 'logs' | 'earnings' | 'task_details'>('duty');
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
 
-  const availableTasks = orders.filter(o => o.status === OrderStatus.READY_FOR_PICKUP && !o.riderId);
-  const myActiveTasks = orders.filter(o => o.riderId === 'current-rider' && o.status !== OrderStatus.DELIVERED);
-  const completedTasks = orders.filter(o => o.riderId === 'current-rider' && o.status === OrderStatus.DELIVERED);
+  const availableTasks = useMemo(() => orders.filter(o => o.status === OrderStatus.READY_FOR_PICKUP && !o.riderId), [orders]);
+  const myActiveTask = useMemo(() => orders.find(o => o.riderId === 'current-rider' && o.status !== OrderStatus.DELIVERED), [orders]);
+  const completedTasks = useMemo(() => orders.filter(o => o.riderId === 'current-rider' && o.status === OrderStatus.DELIVERED), [orders]);
 
-  const updateOrderStatus = (orderId: string, status: OrderStatus) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status, riderId: 'current-rider' } : o));
-    if (selectedOrder?.id === orderId) {
-      setSelectedOrder(prev => prev ? { ...prev, status, riderId: 'current-rider' } : null);
-    }
+  const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    const { error } = await supabase.from('orders').update({ 
+      status, 
+      rider_id: 'current-rider' 
+    }).eq('id', orderId);
+    
+    if (error) alert("Logistics Error: " + error.message);
   };
 
   const acceptTask = (order: Order) => {
     updateOrderStatus(order.id, OrderStatus.PICKED_UP);
-    setSelectedOrder({ ...order, status: OrderStatus.PICKED_UP, riderId: 'current-rider' });
-    setView('task');
+    setSelectedOrderId(order.id);
+    setView('task_details');
   };
 
+  const NavItem = ({ id, label, icon: Icon }: any) => (
+    <button onClick={() => setView(id)} className={`flex flex-col items-center gap-1 transition-all ${view === id ? 'text-blue-500' : 'text-slate-500'}`}>
+      <div className={`p-2.5 rounded-2xl transition-all ${view === id ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'hover:bg-slate-100'}`}><Icon className="w-5 h-5" /></div>
+      <span className="text-[7px] font-black uppercase tracking-widest">{label}</span>
+    </button>
+  );
+
   return (
-    <div className="h-full bg-[#0F172A] flex flex-col text-slate-200">
+    <div className="h-full bg-[#F8F9FB] flex flex-col text-slate-900 font-['Plus_Jakarta_Sans']">
       
       {/* Header */}
-      <div className="bg-[#1E293B] p-6 pt-10 rounded-b-[32px] border-b border-slate-800">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h2 className="font-black text-xl text-white tracking-tight">Rider Central</h2>
-            <div className="flex items-center gap-1.5 mt-0.5">
-               <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-slate-500'}`} />
-               <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest">{isOnline ? 'Ready' : 'Offline'}</span>
-            </div>
+      <div className="bg-slate-900 px-6 pt-12 pb-8 rounded-b-[48px] shadow-2xl relative overflow-hidden">
+        <div className="absolute top-[-20px] right-[-20px] w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
+        
+        <div className="flex justify-between items-center relative z-10 mb-6">
+          <div className="flex items-center gap-3">
+             <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                <Bike className="w-6 h-6 text-blue-400" />
+             </div>
+             <div>
+                <h2 className="font-black text-xl text-white tracking-tight italic">Rider Pro.</h2>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                   <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}`} />
+                   <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">{isOnline ? 'Active on Field' : 'Offline'}</span>
+                </div>
+             </div>
           </div>
-          <button onClick={() => setIsOnline(!isOnline)} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase border transition-all ${isOnline ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-green-500/10 text-green-500 border-green-500/20'}`}>
-            {isOnline ? 'Go Off' : 'Go On'}
+          <button onClick={() => setIsOnline(!isOnline)} className={`w-12 h-6 rounded-full relative transition-all ${isOnline ? 'bg-blue-500' : 'bg-slate-700'}`}>
+             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isOnline ? 'left-7' : 'left-1'}`}></div>
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
-           <div className="bg-slate-900/50 p-3 rounded-2xl border border-slate-800">
-              <span className="text-[8px] font-black text-slate-500 uppercase block mb-0.5">Earnings</span>
-              <span className="text-sm font-black text-white">₹1.2k</span>
+        <div className="grid grid-cols-2 gap-4 relative z-10">
+           <div className="bg-white/5 backdrop-blur-md p-4 rounded-3xl border border-white/10">
+              <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.2em] block mb-1">Today's Pay</span>
+              <span className="text-xl font-black text-white">₹1,240</span>
            </div>
-           <div className="bg-slate-900/50 p-3 rounded-2xl border border-slate-800 text-center">
-              <span className="text-[8px] font-black text-slate-500 uppercase block mb-0.5">Rating</span>
-              <span className="text-sm font-black text-white">4.9 ⭐</span>
-           </div>
-           <div className="bg-slate-900/50 p-3 rounded-2xl border border-slate-800 text-right">
-              <span className="text-[8px] font-black text-slate-500 uppercase block mb-0.5">Trips</span>
-              <span className="text-sm font-black text-white">{completedTasks.length}</span>
+           <div className="bg-white/5 backdrop-blur-md p-4 rounded-3xl border border-white/10">
+              <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.2em] block mb-1">Success Rate</span>
+              <span className="text-xl font-black text-white">98%</span>
            </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 hide-scrollbar pb-24">
-        {view === 'dashboard' && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            {myActiveTasks.length > 0 && (
+        {view === 'duty' && (
+          <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+            {myActiveTask ? (
               <section className="space-y-3">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Active Duty</h3>
-                {myActiveTasks.map(task => (
-                  <div key={task.id} onClick={() => { setSelectedOrder(task); setView('task'); }} className="bg-[#1E293B] rounded-2xl p-4 border border-slate-800 shadow-md">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <Navigation className="w-5 h-5 text-orange-500" />
-                        <h4 className="font-black text-white text-xs">#{task.id.slice(-5)}</h4>
+                <div className="flex items-center justify-between px-2">
+                   <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Current Mission</h3>
+                   <Badge variant="primary" pulse className="text-[7px]">In Progress</Badge>
+                </div>
+                <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-xl shadow-slate-200/50">
+                   <div className="flex gap-4 items-start mb-6">
+                      <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center flex-shrink-0">
+                         <Package className="w-6 h-6 text-blue-500" />
                       </div>
-                      <Badge variant="primary" className="text-[7px]">Active</Badge>
+                      <div className="min-w-0">
+                         <h4 className="font-black text-slate-900 text-sm">Order #{myActiveTask.id.slice(-6)}</h4>
+                         <p className="text-[10px] text-slate-400 font-bold uppercase truncate mt-0.5">{myActiveTask.deliveryLocation.address}</p>
+                      </div>
+                   </div>
+                   
+                   <div className="grid grid-cols-2 gap-3">
+                      <button 
+                        onClick={() => updateOrderStatus(myActiveTask.id, OrderStatus.DELIVERED)}
+                        className="bg-blue-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                      >
+                         Complete Drop
+                      </button>
+                      <button className="bg-slate-50 text-slate-900 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-slate-100 flex items-center justify-center gap-2">
+                         <Navigation className="w-3 h-3" /> Map
+                      </button>
+                   </div>
+                </div>
+              </section>
+            ) : (
+              <section className="space-y-4">
+                <div className="flex items-center justify-between px-2">
+                   <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Available Pickups</h3>
+                   <span className="text-[8px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">{availableTasks.length} Near You</span>
+                </div>
+                
+                <div className="space-y-3">
+                  {availableTasks.map(task => (
+                    <div key={task.id} className="bg-white border border-slate-100 rounded-[32px] p-5 shadow-sm hover:shadow-md transition-all">
+                       <div className="flex justify-between items-start mb-4">
+                          <div className="flex gap-3">
+                             <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400"><Clock className="w-5 h-5" /></div>
+                             <div>
+                                <h4 className="text-xs font-black">₹{Math.floor(task.totalAmount * 0.15)} Payout</h4>
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">2.4 km • Est 12 mins</p>
+                             </div>
+                          </div>
+                          <Badge variant="neutral" className="text-[6px]">Express</Badge>
+                       </div>
+                       <button 
+                         onClick={() => acceptTask(task)}
+                         disabled={!isOnline}
+                         className="w-full bg-slate-900 text-white py-3.5 rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50"
+                       >
+                         Start Duty
+                       </button>
                     </div>
-                    <Button variant="primary" fullWidth size="sm" className="bg-orange-500 text-[9px] h-8">Track Location</Button>
-                  </div>
-                ))}
+                  ))}
+
+                  {availableTasks.length === 0 && (
+                    <div className="py-20 text-center opacity-30 flex flex-col items-center">
+                       <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"><Zap className="w-8 h-8" /></div>
+                       <p className="font-black text-[10px] uppercase tracking-[0.2em]">Searching for tasks...</p>
+                    </div>
+                  )}
+                </div>
               </section>
             )}
+          </div>
+        )}
 
-            <section className="space-y-3">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Available</h3>
-              <div className="space-y-3">
-                {availableTasks.map(task => (
-                  <div key={task.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                    <div className="flex justify-between items-center mb-4">
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-blue-400" />
-                        <h4 className="font-black text-white text-sm">₹85.00 Payout</h4>
-                      </div>
-                      <span className="text-[9px] font-black text-slate-500">2.4 km away</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => acceptTask(task)} className="flex-1 bg-white text-slate-900 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest">Accept Duty</button>
-                      <button className="w-10 bg-slate-800 rounded-xl flex items-center justify-center text-red-400"><XCircle className="w-4 h-4" /></button>
-                    </div>
+        {view === 'logs' && (
+          <div className="space-y-3 animate-in slide-in-from-right-4 duration-500">
+             <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-2">Delivery Logs</h3>
+             {completedTasks.map(task => (
+               <div key={task.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                     <div className="w-9 h-9 bg-green-50 rounded-xl flex items-center justify-center text-green-500"><CheckCircle2 className="w-4 h-4" /></div>
+                     <div>
+                        <p className="text-[10px] font-black">#{task.id.slice(-6)}</p>
+                        <p className="text-[8px] text-slate-400 font-bold uppercase">{new Date(task.timestamp).toLocaleTimeString()}</p>
+                     </div>
                   </div>
-                ))}
-              </div>
-            </section>
+                  <span className="text-[10px] font-black text-slate-900">+₹45.00</span>
+               </div>
+             ))}
+             {completedTasks.length === 0 && (
+                <div className="py-20 text-center opacity-20"><History className="w-12 h-12 mx-auto mb-2" /><p className="font-black text-[10px] uppercase tracking-widest">No logs yet</p></div>
+             )}
           </div>
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 h-[72px] bg-[#1E293B]/95 backdrop-blur-xl border-t border-slate-800 flex items-center justify-around px-6 z-[200] rounded-t-[32px]">
-        <button onClick={() => setView('dashboard')} className={`flex flex-col items-center gap-1 ${view === 'dashboard' ? 'text-blue-400' : 'text-slate-500'}`}>
-          <ListTodo className="w-5 h-5" />
-          <span className="text-[8px] font-black uppercase">Duty</span>
-        </button>
-        <button onClick={() => setView('history')} className={`flex flex-col items-center gap-1 ${view === 'history' ? 'text-green-400' : 'text-slate-500'}`}>
-          <History className="w-5 h-5" />
-          <span className="text-[8px] font-black uppercase">Logs</span>
-        </button>
-        <button className="flex flex-col items-center gap-1 text-slate-500">
-          <User className="w-5 h-5" />
-          <span className="text-[8px] font-black uppercase">Me</span>
-        </button>
+      <div className="fixed bottom-0 left-0 right-0 h-20 bg-white/95 backdrop-blur-xl border-t border-slate-100 flex items-center justify-around px-8 z-[200] rounded-t-[40px] shadow-2xl">
+        <NavItem id="duty" label="Duty" icon={ListTodo} />
+        <NavItem id="logs" label="History" icon={History} />
+        <NavItem id="earnings" label="Wallet" icon={DollarSign} />
+        <NavItem id="profile" label="Rider" icon={User} />
       </div>
     </div>
   );

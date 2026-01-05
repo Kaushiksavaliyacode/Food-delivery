@@ -1,5 +1,8 @@
+
 import { initializeApp } from "firebase/app";
 import * as firebaseAnalytics from "firebase/analytics";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -15,12 +18,14 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Safe Analytics initialization to prevent "Component analytics has not been registered" error
+// Initialize Firebase Services
+export const db = getFirestore(app);
+export const storage = getStorage(app);
+
+// Safe Analytics initialization
 export let analytics: any = null;
 
 if (typeof window !== 'undefined') {
-  // Fix: Using wildcard import and cast to any to bypass "no exported member" errors 
-  // which occur in some TypeScript environments when resolving modular Firebase sub-packages.
   const analyticsLib = firebaseAnalytics as any;
   
   if (analyticsLib && typeof analyticsLib.isSupported === 'function') {

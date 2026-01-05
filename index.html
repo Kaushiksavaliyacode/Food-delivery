@@ -6,8 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>FoodGo - Premium Delivery Ecosystem</title>
     
-    <!-- PWA & Mobile Optimization -->
-    <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#E23744">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -65,15 +63,5 @@
 <body class="overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
-    <script>
-      // Service Worker registration for PWA functionality
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').catch(err => {
-            console.log('SW registration failed: ', err);
-          });
-        });
-      }
-    </script>
 </body>
 </html>

@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { UserRole, AppState, Order } from './types.ts';
 import CustomerApp from './screens/CustomerApp.tsx';
 import DeliveryApp from './screens/DeliveryApp.tsx';
 import AdminPanel from './screens/AdminPanel.tsx';
 import { supabase } from './supabase.ts';
-import './firebase.ts'; // Ensure Firebase services are initialized
 import { 
   ShoppingBag, ShieldCheck, Bike, ChevronRight, 
   Smartphone, LogOut, Settings, 
